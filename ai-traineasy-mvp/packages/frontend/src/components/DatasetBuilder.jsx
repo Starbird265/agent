@@ -1,27 +1,31 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { uploadDataset } from '../api';
 
-export default function DatasetBuilder({ onDataLoaded }) {
+export default function DatasetBuilder({ project, onDataLoaded }) {
   const [preview, setPreview] = useState([]);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
+    // 1) Persist file to backend
+    const result = await uploadDataset(project.id, file);
+    if (!result?.success) {
+      return alert('Upload failed');
+    }
+    // 2) Read and preview locally as before
     const text = await file.text();
     let data = [];
     if (file.name.endsWith('.json')) {
       data = JSON.parse(text);
     } else {
-      // CSV parsing (simple split)
+      // CSV parsing stub...
       const rows = text.trim().split(/\r?\n/);
       const headers = rows.shift().split(',');
-      data = rows.map(row => {
-        const cols = row.split(',');
-        return headers.reduce((obj, h, i) => ({ ...obj, [h]: cols[i] }), {});
-      });
+      data = rows.map(row => headers.reduce((o, h, i) => ({ ...o, [h]: row.split(',')[i] }), {}));
     }
-    setPreview(data.slice(0, 5));    // show first 5 rows
-    onDataLoaded(data);              // pass full data upstream
-  }, [onDataLoaded]);
+    setPreview(data.slice(0, 5));
+    onDataLoaded(data);
+  }, [project.id, onDataLoaded]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 

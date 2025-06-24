@@ -36,3 +36,67 @@ export async function fetchProjects() {
     return [];
   }
 }
+
+export async function saveSchema(projectId, schema) {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/schema`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(schema)
+    });
+    return res.ok ? res.json() : null;
+  } catch (err) {
+    console.error('saveSchema error:', err);
+    return null;
+  }
+}
+
+export async function uploadDataset(projectId, file) {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/projects/${projectId}/data`, {
+    method: 'POST',
+    body: form
+  });
+  return res.ok ? res.json() : null;
+}
+
+export async function predict(projectId, inputs) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/predict`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inputs })
+  });
+  if (!res.ok) throw new Error(`Prediction failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchLogs(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/logs`);
+  if (!res.ok) throw new Error(`Logs fetch failed: ${res.status}`);
+  return res.text();
+}
+
+export async function pauseTraining(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/train/pause`, {
+    method: 'POST'
+  });
+  return res.ok ? res.json() : null;
+}
+
+export async function startTraining(projectId, cpuPercent) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/train`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cpu_percent: cpuPercent }),
+  });
+  if (!res.ok) throw new Error(`Train failed: ${res.status}`);
+  return res.json();
+}
+
+export async function resumeTraining(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/train/resume`, {
+    method: 'POST'
+  });
+  return res.ok ? res.json() : null;
+}

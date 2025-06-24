@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
-import { pingServer, createProject, fetchProjects } from './api';
+import { pingServer, createProject, fetchProjects, saveSchema } from './api';
 import DatasetBuilder from './components/DatasetBuilder';
+import LabelingTool from './components/LabelingTool';
+import TrainingWizard from './components/TrainingWizard';
+import PredictionUI from './components/PredictionUI';
+import TrainingFeedback from './components/TrainingFeedback';
 
 export default function App() {
   const [status, setStatus] = useState('Connecting...');
   const [projectName, setProjectName] = useState('');
   const [project, setProject] = useState(null);
   const [allProjects, setAllProjects] = useState([]);
+  const [dataset, setDataset] = useState([]);
 
   useEffect(() => {
     pingServer().then(setStatus);
@@ -52,14 +57,33 @@ export default function App() {
 
       {/* Created Project */}
       {project && (
-        <div className="mt-4 text-sm text-gray-700">
-          <p><strong>Created Project:</strong></p>
+        <>
           <pre className="bg-gray-100 p-2 rounded">{JSON.stringify(project, null, 2)}</pre>
-        </div>
-        <div className="mt-6">
-          <h2 className="text-lg font-semibold">Upload Dataset</h2>
-          <DatasetBuilder onDataLoaded={(data) => console.log('Data loaded:', data)} />
-        </div>
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold">Upload Dataset</h2>
+            <DatasetBuilder project={project} onDataLoaded={setDataset} />
+            {dataset.length > 0 && (
+              <LabelingTool data={dataset} onSchemaSave={(schema) => {
+                saveSchema(project.id, schema).then(response => {
+                  if (response?.success) {
+                    console.log('Schema saved successfully');
+                  } else {
+                    alert('Failed to save schema');
+                  }
+                });
+              }} />
+            )}
+            // Inside the component's return JSX where project, dataset, and schema are used
+            {project && dataset.length > 0 && schema && (
+              <>
+                <TrainingWizard projectId={project.id} schema={schema} />
+                {/* only show PredictionUI after training is done and model.pkl exists */}
+                <PredictionUI projectId={project.id} schema={schema} />
+                <TrainingFeedback projectId={project.id} />
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* All Projects List */}
