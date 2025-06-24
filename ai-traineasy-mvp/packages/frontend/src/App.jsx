@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { pingServer, createProject, fetchProjects, saveSchema } from './api';
+import { pingServer, createProject, fetchProjects, saveSchema, fetchSystemInfo } from './api';
 import DatasetBuilder from './components/DatasetBuilder';
 import LabelingTool from './components/LabelingTool';
 import TrainingWizard from './components/TrainingWizard';
@@ -12,10 +12,12 @@ export default function App() {
   const [project, setProject] = useState(null);
   const [allProjects, setAllProjects] = useState([]);
   const [dataset, setDataset] = useState([]);
+  const [sysInfo, setSysInfo] = useState(null);
 
   useEffect(() => {
     pingServer().then(setStatus);
     loadProjects();
+    fetchSystemInfo().then(setSysInfo);
   }, []);
 
   const loadProjects = async () => {
@@ -37,6 +39,18 @@ export default function App() {
     <div className="p-4 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold">AI TrainEasy MVP</h1>
       <p className="text-sm mt-2">Backend status: <span className="font-mono">{status}</span></p>
+
+      {/* System Info Panel */}
+      {sysInfo && (
+        <div className="p-2 bg-gray-100 rounded mb-4 text-sm">
+          <strong>CPU:</strong> {sysInfo.cpu_count} cores ({sysInfo.cpu_percent}% used) •{' '}
+          <strong>RAM:</strong> {sysInfo.total_ram_gb} GB ({sysInfo.ram_percent}% used) •{' '}
+          <strong>GPU:</strong>{' '}
+          {sysInfo.gpu_available
+            ? `${sysInfo.gpu_count}× ${sysInfo.gpu_names.join(', ')}`
+            : 'None'}
+        </div>
+      )}
 
       {/* New Project Form */}
       <div className="mt-6 flex">

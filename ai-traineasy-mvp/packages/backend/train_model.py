@@ -1,47 +1,97 @@
-import sys
-import os
-import json
+import sys, os, json
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-import joblib
+from joblib import dump
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from lightgbm import LGBMClassifier, LGBMRegressor
 
-def train(project_id):
-    base_dir = os.path.join("projects", project_id)
-    schema_path = os.path.join(base_dir, "schema.json")
-    data_dir = os.path.join(base_dir, "data")
+# 1) Setup paths
+project_id = sys.argv[1]
+base_dir = os.path.join("projects", project_id)
+data_dir = os.path.join(base_dir, "data")
+schema_path = os.path.join(base_dir, "schema.json")
 
-    # Load schema
-    with open(schema_path) as f:
-        schema = json.load(f)
+# 2) Load schema & data
+with open(schema_path) as f:
+    schema = json.load(f)
+features, target = schema["inputs"], schema["output"]
 
-    inputs = schema["inputs"]
-    output = schema["output"]
+# Assume first file in data_dir
+files = [f for f in os.listdir(data_dir) if f.endswith((".csv", ".json"))]
+file_path = os.path.join(data_dir, files[0])
+df = pd.read_csv(file_path) if file_path.endswith(".csv") else pd.read_json(file_path)
 
-    # Use first file in /data
-    filename = os.listdir(data_dir)[0]
-    file_path = os.path.join(data_dir, filename)
+# 3) Separate X/y and drop fully empty rows
+df = df.dropna(subset=features + [target], how="all")
+X, y = df[features], df[target].copy()
 
-    if filename.endswith(".csv"):
-        df = pd.read_csv(file_path)
-    elif filename.endswith(".json"):
-        df = pd.read_json(file_path)
-    else:
-        raise ValueError("Unsupported file format")
+# 4) Encode target if categorical
+if y.dtype == "object" or y.dtype.name == "category":
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+    dump(le, os.path.join(base_dir, "label_encoder.pkl"))
 
-    # Drop NA rows and subset
-    df = df.dropna(subset=inputs + [output])
-    X = df[inputs]
-    y = df[output]
+# 5) Identify numeric vs categorical features
+num_cols = X.select_dtypes(include=["number"]).columns.tolist()
+cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
-    # Train model
-    model = RandomForestClassifier()
-    model.fit(X, y)
+# 6) Build preprocessing pipeline
+numeric_transformer = Pipeline([
+    ("imputer", SimpleImputer(strategy="mean")),
+    ("scaler", StandardScaler())
+])
+categorical_transformer = Pipeline([
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("onehot", OneHotEncoder(handle_unknown="ignore"))
+])
 
-    # Save
-    model_path = os.path.join(base_dir, "model.pkl")
-    joblib.dump(model, model_path)
+preprocessor = ColumnTransformer([
+    ("num", numeric_transformer, num_cols),
+    ("cat", categorical_transformer, cat_cols),
+])
 
-    print(f"[\u2713] Model saved to {model_path}")
+# 7) Choose model candidates based on problem type
+is_classification = len(set(y)) <= 20  # heuristic
+
+candidates = {
+    "RandomForest": RandomForestClassifier(n_estimators=100) if is_classification else RandomForestRegressor(n_estimators=100),
+    "LightGBM": LGBMClassifier(n_estimators=100) if is_classification else LGBMRegressor(n_estimators=100),
+}
+
+# 8) Evaluate each in a pipeline
+best_name, best_score, best_pipeline = None, -float("inf"), None
+for name, model in candidates.items():
+    pipe = Pipeline([("pre", preprocessor), ("model", model)])
+    scores = cross_val_score(pipe, X, y, cv=3, n_jobs=-1)
+    avg = scores.mean()
+    print(f"{name}: CV score={avg:.4f}")
+    if avg > best_score:
+        best_score, best_name, best_pipeline = avg, name, pipe
+
+# 9) Train final pipeline on full data
+print(f"Training final {best_name} on full dataset…")
+best_pipeline.fit(X, y)
+
+# 10) Persist the pipeline and log metadata
+dump(best_pipeline, os.path.join(base_dir, "model.pkl"))
+log = {
+    "problem_type": "classification" if is_classification else "regression",
+    "scores": {name: float(f"{cross_val_score(Pipeline([('pre', preprocessor),('model', m)]), X, y, cv=3).mean():.4f}")
+               for name, m in candidates.items()},
+    "selected_model": best_name,
+    "cv_score": float(f"{best_score:.4f}"),
+    "features": features,
+    "num_features": len(num_cols),
+    "cat_features": len(cat_cols),
+}
+with open(os.path.join(base_dir, "training_log.json"), "w") as f:
+    json.dump(log, f, indent=2)
+
+print("✅ AutoML training complete. Log saved.")
 
 if __name__ == "__main__":
     train(sys.argv[1])

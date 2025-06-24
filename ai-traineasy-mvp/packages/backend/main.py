@@ -1,3 +1,5 @@
+import psutil
+import torch
 from fastapi import FastAPI, Request, File, UploadFile, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os, json, uuid
@@ -11,6 +13,35 @@ from fastapi.responses import PlainTextResponse
 import signal
 
 app = FastAPI()
+
+@app.get("/system-info")
+async def system_info():
+    cpu_count = psutil.cpu_count(logical=True)
+    cpu_percent = psutil.cpu_percent(interval=0.1)
+    mem = psutil.virtual_memory()
+    total_ram_gb = round(mem.total / (1024**3), 2)
+    ram_percent = mem.percent
+    gpu_available = torch.cuda.is_available()
+    gpu_count = torch.cuda.device_count() if gpu_available else 0
+    gpu_names = [torch.cuda.get_device_name(i) for i in range(gpu_count)] if gpu_available else []
+    return {
+        "cpu_count": cpu_count,
+        "cpu_percent": cpu_percent,
+        "total_ram_gb": total_ram_gb,
+        "ram_percent": ram_percent,
+        "gpu_available": gpu_available,
+        "gpu_count": gpu_count,
+        "gpu_names": gpu_names
+    }
+
+@app.get("/projects/{project_id}/training-log")
+async def get_training_log(project_id: str):
+    log_path = f"projects/{project_id}/training_log.json"
+    if os.path.exists(log_path):
+        with open(log_path) as f:
+            return json.load(f)
+    else:
+        return JSONResponse(status_code=404, content={"error": "No training log found"})
 
 # 1) CORS must be registered before you define @app.get/@app.post
 app.add_middleware(
@@ -101,14 +132,17 @@ async def train_project(project_id: str, body: TrainRequest):
 
     cpu_limit = body.cpu_percent  # 0–100
 
+    import shutil
+
     def run_training():
         with open(log_path, "w") as log_file:
             cmd = []
-            # If a cpulimit utility is installed, wrap the python call
-            if 0 < cpu_limit < 100:
+            # Check if cpulimit utility is available
+            cpulimit_path = shutil.which("cpulimit")
+            if 0 < cpu_limit < 100 and cpulimit_path is not None:
                 cmd = [
-                  "cpulimit", "-l", str(cpu_limit),
-                  "--", "python", "train_model.py", project_id
+                    cpulimit_path, "-l", str(cpu_limit),
+                    "--", "python", "train_model.py", project_id
                 ]
             else:
                 cmd = ["python", "train_model.py", project_id]

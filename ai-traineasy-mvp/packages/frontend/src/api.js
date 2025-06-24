@@ -100,3 +100,19 @@ export async function resumeTraining(projectId) {
   });
   return res.ok ? res.json() : null;
 }
+
+export async function fetchTrainingLog(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/training-log`);
+  return res.ok ? res.json() : null;
+}
+
+export async function fetchSystemInfo() {
+  try {
+    const res = await fetch(`${API_BASE}/system-info`);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchSystemInfo error:", e);
+    return null;
+  }
+}
