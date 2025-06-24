@@ -12,6 +12,7 @@ export default function App() {
   const [project, setProject] = useState(null);
   const [allProjects, setAllProjects] = useState([]);
   const [dataset, setDataset] = useState([]);
+  const [schema, setSchema] = useState(null); // <-- Add schema state
 
   useEffect(() => {
     pingServer().then(setStatus);
@@ -29,6 +30,8 @@ export default function App() {
     if (result?.success) {
       setProject(result.project);
       setProjectName('');
+      setDataset([]); // Clear dataset for new project
+      setSchema(null); // Clear schema for new project
       loadProjects(); // refresh list
     }
   };
@@ -63,21 +66,23 @@ export default function App() {
             <h2 className="text-lg font-semibold">Upload Dataset</h2>
             <DatasetBuilder project={project} onDataLoaded={setDataset} />
             {dataset.length > 0 && (
-              <LabelingTool data={dataset} onSchemaSave={(schema) => {
-                saveSchema(project.id, schema).then(response => {
+              <LabelingTool data={dataset} onSchemaSave={(currentSchema) => { // Renamed param for clarity
+                saveSchema(project.id, currentSchema).then(response => {
                   if (response?.success) {
                     console.log('Schema saved successfully');
+                    setSchema(currentSchema); // <-- Set schema state after successful save
                   } else {
                     alert('Failed to save schema');
+                    setSchema(null); // Optionally clear schema on failed save
                   }
                 });
               }} />
             )}
-            // Inside the component's return JSX where project, dataset, and schema are used
+            {/* Conditional rendering based on project, dataset, and schema state */}
             {project && dataset.length > 0 && schema && (
               <>
                 <TrainingWizard projectId={project.id} schema={schema} />
-                {/* only show PredictionUI after training is done and model.pkl exists */}
+                {/* TODO: PredictionUI should ideally only show after training is confirmed complete */}
                 <PredictionUI projectId={project.id} schema={schema} />
                 <TrainingFeedback projectId={project.id} />
               </>
