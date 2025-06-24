@@ -25,7 +25,15 @@ export default function App() {
   };
 
   const handleCreateProject = async () => {
-    if (!projectName) return alert('Enter a project name');
+    const projectNamePattern = /^[a-zA-Z0-9_-]{3,30}$/;
+    if (!projectName) {
+      alert('Enter a project name.');
+      return;
+    }
+    if (!projectNamePattern.test(projectName)) {
+      alert('Project name must be 3-30 characters long and can only contain letters, numbers, underscores, and hyphens.');
+      return;
+    }
     const result = await createProject(projectName);
     if (result?.success) {
       setProject(result.project);
