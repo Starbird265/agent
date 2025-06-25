@@ -160,6 +160,57 @@ export async function fetchTrainHistory(projectId) {
   }
 }
 
+export async function exportModel(projectId) {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/export`, {
+      method: 'POST', // Backend endpoint is POST
+      headers: DEFAULT_HEADERS, // Includes X-API-Key and Content-Type
+      // No body needed for this POST request based on backend implementation
+    });
+
+    if (res.status === 402) { // Payment Required
+      let errorDetail = 'Export limit reached or payment required.';
+      try {
+        const errData = await res.json();
+        errorDetail = errData.detail || errorDetail;
+      } catch (e) {
+        // Ignore if error response is not JSON
+      }
+      throw new Error(errorDetail);
+    }
+
+    if (!res.ok) {
+      // Try to get more specific error from backend if possible
+      let errorDetail = `Export failed with status: ${res.status}`;
+      try {
+        const errData = await res.json(); // Assuming error might be JSON
+        errorDetail = errData.detail || errorDetail;
+      } catch (e) {
+         // Ignore if error response is not JSON
+      }
+      throw new Error(errorDetail);
+    }
+
+    // Process the file download
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectId}-model.pkl`; // Or get filename from Content-Disposition header if backend sets it
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url); // Clean up
+    a.remove();
+    // No explicit return value needed as it triggers a download.
+    // Can return true/success if needed by caller to confirm initiation.
+    return { success: true, message: "Model download initiated." };
+
+  } catch (err) {
+    console.error('exportModel error:', err);
+    throw err; // Re-throw to be caught by calling component
+  }
+}
+
 export async function upgradePlan(email, planType) {
   try {
     const res = await fetch(`${API_BASE}/billing/upgrade`, {

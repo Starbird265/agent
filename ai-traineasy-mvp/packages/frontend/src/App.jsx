@@ -4,9 +4,10 @@ import {
   createProject, // This will be effectively replaced by signup for user-tied projects
   fetchProjects,
   saveSchema,
-  userSignup, // New import
-  userLogin, // New import
-  fetchCurrentUser // New import
+  userSignup,
+  userLogin,
+  fetchCurrentUser,
+  exportModel // New import
 } from './api';
 import DatasetBuilder from './components/DatasetBuilder';
 import LabelingTool from './components/LabelingTool';
@@ -300,6 +301,38 @@ export default function App() {
                 {/* TODO: PredictionUI should ideally only show after training is confirmed complete */}
                 <PredictionUI projectId={project.id} schema={schema} />
                 <TrainingFeedback projectId={project.id} />
+
+                {/* Export Model Button - Show if project, schema, and user exist */}
+                {/* A more robust check would be if a model file actually exists (e.g., from TrainingWizard status) */}
+                <div className="mt-6">
+                  <button
+                    onClick={async () => {
+                      if (!project || !project.id || !currentUser || !currentUser.id) {
+                        alert("Project or user information is missing.");
+                        return;
+                      }
+                      try {
+                        await exportModel(project.id); // API function handles download
+                        // Refresh user info to get updated credits
+                        const updatedUserData = await fetchCurrentUser(currentUser.id); // Pass stored/current user ID
+                        if (updatedUserData && updatedUserData.id) {
+                          setCurrentUser(updatedUserData);
+                        }
+                      } catch (e) {
+                        console.error("Export error:", e.message);
+                        if (e.message.toLowerCase().includes('limit') || e.message.toLowerCase().includes('payment required')) {
+                          setShowUpgradeModal(true);
+                        } else {
+                          alert(`Export failed: ${e.message}`);
+                        }
+                      }
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    // Consider disabling if jobStatus from TrainingWizard indicates not 'finished'
+                  >
+                    Export Trained Model
+                  </button>
+                </div>
               </>
             )}
           </div>
