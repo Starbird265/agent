@@ -16,10 +16,54 @@ import sys # Added for sys.executable
 from concurrent.futures import ProcessPoolExecutor, Future # Added ProcessPoolExecutor and Future
 import time # For history timestamps
 import traceback # For logging exception tracebacks
-# uuid was already imported, will use existing import for job_id
+# uuid was already imported
+import secrets # For generating secure random codes
+from passlib.context import CryptContext # For password hashing
 
 # Placeholder for API Key - IN A REAL APP, USE ENVIRONMENT VARIABLES
 STATIC_API_KEY = os.getenv("API_KEY", "dev_secret_key")
+
+# --- Password Hashing Setup ---
+# NOTE: `passlib` and `bcrypt` would need to be added to requirements.
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+# --- End Password Hashing Setup ---
+
+# --- Data Storage Paths ---
+DATA_DIR = "data"
+WAITING_LIST_FILE = os.path.join(DATA_DIR, "waiting_list.json")
+INVITES_FILE = os.path.join(DATA_DIR, "invites.json")
+USERS_FILE = os.path.join(DATA_DIR, "users.json") # For later steps
+
+# Ensure data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def read_json_file(file_path: str, default_value=None):
+    if default_value is None:
+        default_value = []
+    if not os.path.exists(file_path):
+        return default_value
+    try:
+        with open(file_path, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error reading {file_path}: {e}. Returning default value.")
+        return default_value
+
+def write_json_file(file_path: str, data):
+    try:
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=2)
+        return True
+    except IOError as e:
+        print(f"Error writing to {file_path}: {e}")
+        return False
+# --- End Data Storage Helpers ---
 
 # --- Job History Function (Revised as per new instructions) ---
 def append_history(project_id: str, entry: dict):
@@ -86,8 +130,291 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure projects dir exists
+# Ensure projects dir exists (for project-specific data)
 os.makedirs('projects', exist_ok=True)
+
+# --- Pydantic Models for Waiting List & Auth ---
+class WaitingListSignupRequest(BaseModel):
+    email: str # Could add Pydantic EmailStr for validation
+
+class UserSignupRequest(BaseModel):
+    email: str # Could add Pydantic EmailStr
+    password: str
+    invite_code: str
+
+class UserLoginRequest(BaseModel):
+    email: str # Could add Pydantic EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: str # UUID
+    email: str # Could use EmailStr
+    created_at: str # datetime iso format
+    stripe_customer_id: str | None = None
+    subscription_status: str
+    has_beta_access: bool
+    export_credits: int
+    subscription_type: str
+    beta_credit_available: bool
+
+    class Config:
+        from_attributes = True # Changed from orm_mode for Pydantic v2
+
+# --- Auth Endpoints ---
+@app.post("/auth/signup", status_code=201)
+# Consider changing response_model to UserResponse if returning full user object
+async def user_signup(payload: UserSignupRequest):
+    invites = read_json_file(INVITES_FILE, [])
+    users = read_json_file(USERS_FILE, [])
+
+    # 1. Validate Invite Code
+    invite_entry = None
+    invite_idx = -1
+    for i, inv in enumerate(invites):
+        if inv.get("code") == payload.invite_code:
+            invite_entry = inv
+            invite_idx = i
+            break
+
+    if not invite_entry:
+        raise HTTPException(status_code=400, detail="Invalid invite code.")
+
+    if invite_entry.get("redeemed"):
+        raise HTTPException(status_code=400, detail="Invite code has already been redeemed.")
+
+    # Optional: Check if payload.email matches invite_entry.get("email")
+    # if invite_entry.get("email") and payload.email != invite_entry.get("email"):
+    #     raise HTTPException(status_code=400, detail="Invite code not valid for this email address.")
+
+    # 2. Check if email already exists in users
+    for user in users:
+        if user.get("email") == payload.email:
+            raise HTTPException(status_code=400, detail="Email already registered.")
+
+    # 3. Create User
+    new_user_id = str(uuid.uuid4())
+    hashed_password = get_password_hash(payload.password)
+
+    new_user = {
+        "id": new_user_id,
+        "email": payload.email,
+        "hashed_password": hashed_password,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "stripe_customer_id": None, # To be filled by Stripe integration
+        "subscription_status": "beta_access_granted", # More descriptive status
+        "has_beta_access": True,
+        "export_credits": 0,
+        "subscription_type": "beta_only", # Initial plan type
+        "beta_credit_available": True
+    }
+    users.append(new_user)
+
+    # 4. Mark invite code as redeemed
+    invites[invite_idx]["redeemed"] = True
+    invites[invite_idx]["redeemed_at"] = datetime.utcnow().isoformat() + "Z"
+    invites[invite_idx]["redeemed_by_user_id"] = new_user_id
+
+    # 5. Write changes to files
+    if not write_json_file(USERS_FILE, users):
+        # Attempt to revert invite redemption if user save fails? Complex for file-based.
+        # For now, prioritize user not being created if save fails.
+        raise HTTPException(status_code=500, detail="Failed to create user account (user data save error).")
+
+    if not write_json_file(INVITES_FILE, invites):
+        # User was saved, but invite not marked. This is an inconsistent state.
+        # Manual cleanup or more robust transaction logic would be needed for DBs.
+        # For file system, this is a risk. Log it.
+        print(f"CRITICAL: User {new_user_id} created, but failed to mark invite {payload.invite_code} as redeemed.")
+        # Not failing the request here as user is created, but admin should be alerted.
+        # Alternatively, could try to delete the created user if this step fails.
+
+    # JWT will be returned here in a later phase
+    # For now, signup returns a simple message. If UserResponse is desired, change here.
+    return {"message": "User created successfully.", "user_id": new_user_id, "email": payload.email}
+
+@app.post("/auth/login", response_model=UserResponse) # Set response_model
+async def user_login(payload: UserLoginRequest):
+    users = read_json_file(USERS_FILE, [])
+
+    user_entry = None
+    for user in users:
+        if user.get("email") == payload.email:
+            user_entry = user
+            break
+
+    if not user_entry:
+        raise HTTPException(status_code=401, detail="Incorrect email or password.") # Generic message for security
+
+    if not verify_password(payload.password, user_entry.get("hashed_password")):
+        raise HTTPException(status_code=401, detail="Incorrect email or password.") # Generic message
+
+    # JWT will be returned here in a later phase
+    # Return the user entry, Pydantic will serialize it according to UserResponse
+    return user_entry
+
+# --- Conceptual Export Control Logic (Not an active endpoint yet) ---
+# def conceptual_allow_and_process_export(user_id: str, project_id: str) -> bool:
+#     """
+#     Conceptual logic for checking if a user can export a model and updating their state.
+#     This is not an active endpoint. For planning purposes only.
+#     """
+#     users = read_json_file(USERS_FILE, [])
+#     user_to_update = None
+#     user_idx = -1
+#     for i, u in enumerate(users):
+#         if u.get("id") == user_id:
+#             user_to_update = u
+#             user_idx = i
+#             break
+#
+#     if not user_to_update:
+#         print(f"Export denied: User {user_id} not found.")
+#         return False # User not found
+#
+#     subscription_type = user_to_update.get("subscription_type")
+#     export_credits = user_to_update.get("export_credits", 0)
+#
+#     can_export = False
+#     needs_credit_update = False
+#
+#     if subscription_type == "unlimited_pro_annual":
+#         can_export = True
+#         print(f"Export allowed for user {user_id} (Unlimited Pro Annual).")
+#     elif export_credits > 0:
+#         can_export = True
+#         user_to_update["export_credits"] = export_credits - 1
+#         needs_credit_update = True
+#         print(f"Export allowed for user {user_id} (using 1 credit). Credits remaining: {user_to_update['export_credits']}.")
+#     else:
+#         print(f"Export denied for user {user_id}. No export credits or unlimited plan.")
+#         # Here, one might also check if they have `has_beta_access` and `beta_credit_available`
+#         # and are attempting to make their *very first* export, to guide them to a purchase
+#         # that could use the beta credit. But the export action itself depends on having credits first.
+#         return False
+#
+#     if can_export:
+#         # --- Placeholder for actual export action ---
+#         print(f"Performing export for user {user_id}, project {project_id}...")
+#         # export_successful = do_the_actual_export(project_id)
+#         export_successful = True # Assume success for conceptual logic
+#         # --- End Placeholder ---
+#
+#         if export_successful and needs_credit_update:
+#             users[user_idx] = user_to_update
+#             if not write_json_file(USERS_FILE, users):
+#                 print(f"CRITICAL: Export for user {user_id} occurred, but failed to save updated export_credits.")
+#                 # This is an inconsistent state. Ideally, rollback export or ensure save.
+#                 return False # Indicate overall failure due to state save issue
+#         elif not export_successful and needs_credit_update:
+#             # Export failed, so revert credit change (though it was only in memory)
+#             print(f"Export action failed for user {user_id}, credits not deducted.")
+#             return False
+#
+#         return export_successful # True if export occurred (and credit update if needed was successful)
+#
+#     return False # Should not be reached if logic is correct
+# --- End Conceptual Export Control Logic ---
+#
+# --- Waiting List Endpoints ---
+@app.post("/waiting-list/signup", status_code=201)
+async def waiting_list_signup(payload: WaitingListSignupRequest):
+    """Adds an email to the waiting list."""
+    waiting_list = read_json_file(WAITING_LIST_FILE, [])
+
+    # Check if email already exists
+    for entry in waiting_list:
+        if entry.get("email") == payload.email:
+            # Consider if this should be an error or just a silent success / different status code
+            return {"message": "Email already on the waiting list.", "email": payload.email}
+
+    new_entry = {
+        "email": payload.email,
+        "requested_at": datetime.utcnow().isoformat() + "Z", # ISO 8601 format with Z for UTC
+        "invited": False,
+        "invite_code_issued": None
+    }
+    waiting_list.append(new_entry)
+
+    if write_json_file(WAITING_LIST_FILE, waiting_list):
+        return {"message": "Successfully added to the waiting list.", "email": payload.email}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update waiting list. Please try again later.")
+
+# --- Admin Helper Functions for Invites (Not exposed as HTTP endpoints directly) ---
+def generate_invite_code(length: int = 8) -> str:
+    """Generates a cryptographically secure random string for invite codes."""
+    return secrets.token_urlsafe(length)[:length].upper().replace("_", "X").replace("-","Y") # Make it more memorable
+
+def issue_invite_code_for_email(email_to_invite: str) -> dict | None:
+    """
+    Issues an invite code for a given email if they are on the waiting list and not already invited.
+    Updates waiting_list.json and invites.json.
+    Returns the invite details or None if an error occurred or user not eligible.
+    """
+    waiting_list = read_json_file(WAITING_LIST_FILE, [])
+    invites = read_json_file(INVITES_FILE, [])
+
+    user_on_waiting_list = None
+    user_wl_index = -1
+
+    for i, entry in enumerate(waiting_list):
+        if entry.get("email") == email_to_invite:
+            user_on_waiting_list = entry
+            user_wl_index = i
+            break
+
+    if not user_on_waiting_list:
+        print(f"Admin: Email {email_to_invite} not found on the waiting list.")
+        return None # User not found
+
+    if user_on_waiting_list.get("invited") and user_on_waiting_list.get("invite_code_issued"):
+        print(f"Admin: Email {email_to_invite} has already been issued an invite code: {user_on_waiting_list.get('invite_code_issued')}.")
+        # Optionally, find and return the existing invite from invites.json
+        for inv in invites:
+            if inv.get("code") == user_on_waiting_list.get("invite_code_issued"):
+                return inv
+        return {"message": "Already invited", "code": user_on_waiting_list.get("invite_code_issued")}
+
+
+    # Generate a unique invite code
+    new_code = ""
+    attempts = 0
+    max_attempts = 10 # To prevent infinite loop if code generation is somehow always colliding
+    while attempts < max_attempts:
+        new_code = generate_invite_code()
+        if not any(invite.get("code") == new_code for invite in invites):
+            break
+        attempts += 1
+    if attempts == max_attempts:
+        print(f"Admin: Failed to generate a unique invite code for {email_to_invite} after {max_attempts} attempts.")
+        return None # Could not generate unique code
+
+    # Create new invite entry
+    invite_entry = {
+        "code": new_code,
+        "email": email_to_invite, # Link to the email it was generated for
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "redeemed": False,
+        "redeemed_at": None,
+        "redeemed_by_user_id": None # Will be filled upon signup
+    }
+    invites.append(invite_entry)
+
+    # Update waiting list entry
+    waiting_list[user_wl_index]["invited"] = True
+    waiting_list[user_wl_index]["invite_code_issued"] = new_code
+    waiting_list[user_wl_index]["invited_at"] = datetime.utcnow().isoformat() + "Z"
+
+
+    if write_json_file(INVITES_FILE, invites) and write_json_file(WAITING_LIST_FILE, waiting_list):
+        print(f"Admin: Successfully issued invite code {new_code} to {email_to_invite}.")
+        return invite_entry
+    else:
+        print(f"Admin: Failed to write updates to invites or waiting list files for {email_to_invite}.")
+        # Potentially try to revert one if the other failed, or handle inconsistency.
+        # For simplicity now, just log error.
+        return None
+# --- End Admin Helper Functions ---
 
 class ProjectCreateRequest(BaseModel):
     name: str
