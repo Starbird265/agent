@@ -19,6 +19,7 @@ import traceback # For logging exception tracebacks
 # uuid was already imported
 import secrets # For generating secure random codes
 from passlib.context import CryptContext # For password hashing
+from typing import Literal # For UpgradePlanRequest
 
 # Placeholder for API Key - IN A REAL APP, USE ENVIRONMENT VARIABLES
 STATIC_API_KEY = os.getenv("API_KEY", "dev_secret_key")
@@ -166,6 +167,12 @@ class UserSignupRequest(BaseModel):
 class UserLoginRequest(BaseModel):
     email: str # Could add Pydantic EmailStr
     password: str
+
+PLAN_TYPES = Literal["first_export", "pro_bundle", "unlimited_pro_annual"]
+
+class UpgradePlanRequest(BaseModel):
+    user_email: str # Could use EmailStr from Pydantic
+    plan_type: PLAN_TYPES
 
 class UserResponse(BaseModel):
     id: str # UUID
