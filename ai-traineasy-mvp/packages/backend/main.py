@@ -189,8 +189,7 @@ class UserResponse(BaseModel):
         from_attributes = True # Changed from orm_mode for Pydantic v2
 
 # --- Auth Endpoints ---
-@app.post("/auth/signup", status_code=201)
-# Consider changing response_model to UserResponse if returning full user object
+@app.post("/auth/signup", status_code=201, response_model=UserResponse) # Added response_model
 async def user_signup(payload: UserSignupRequest):
     invites = read_json_file(INVITES_FILE, [])
     users = read_json_file(USERS_FILE, [])
@@ -257,8 +256,7 @@ async def user_signup(payload: UserSignupRequest):
         # Alternatively, could try to delete the created user if this step fails.
 
     # JWT will be returned here in a later phase
-    # For now, signup returns a simple message. If UserResponse is desired, change here.
-    return {"message": "User created successfully.", "user_id": new_user_id, "email": payload.email}
+    return new_user # Return the full new_user object, will be serialized by UserResponse
 
 @app.post("/auth/login", response_model=UserResponse) # Set response_model
 async def user_login(payload: UserLoginRequest):

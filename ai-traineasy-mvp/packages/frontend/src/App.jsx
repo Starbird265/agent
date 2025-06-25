@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { pingServer, createProject, fetchProjects, saveSchema } from './api';
+import {
+  pingServer,
+  createProject, // This will be effectively replaced by signup for user-tied projects
+  fetchProjects,
+  saveSchema,
+  userSignup, // New import
+  userLogin, // New import
+  fetchCurrentUser // New import
+} from './api';
 import DatasetBuilder from './components/DatasetBuilder';
 import LabelingTool from './components/LabelingTool';
 import TrainingWizard from './components/TrainingWizard';
@@ -12,19 +20,118 @@ export default function App() {
   const [project, setProject] = useState(null);
   const [allProjects, setAllProjects] = useState([]);
   const [dataset, setDataset] = useState([]);
-  const [schema, setSchema] = useState(null); // <-- Add schema state
+  const [schema, setSchema] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null); // Added currentUser state
 
+  // States for auth forms
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authInviteCode, setAuthInviteCode] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isLoginView, setIsLoginView] = useState(true); // To toggle between login and signup views
+
+  // Load current user on app mount
   useEffect(() => {
     pingServer().then(setStatus);
-    loadProjects();
+    const storedUserId = localStorage.getItem('ait_userId');
+    // const storedToken = localStorage.getItem('ait_mockToken'); // If using a mock token later
+
+    if (storedUserId) {
+      fetchCurrentUser(storedUserId).then(user => {
+        if (user && user.id) { // Check if user object is valid
+          setCurrentUser(user);
+        } else {
+          // Invalid user or token, clear storage
+          localStorage.removeItem('ait_userId');
+          // localStorage.removeItem('ait_mockToken');
+        }
+      });
+    }
   }, []);
 
+  // Fetch projects when user logs in
+  useEffect(() => {
+    if (currentUser) {
+      loadProjects();
+    } else {
+      setAllProjects([]); // Clear projects if no user
+      setProject(null); // Clear current project
+    }
+  }, [currentUser]);
+
+
   const loadProjects = async () => {
-    const list = await fetchProjects();
-    setAllProjects(list);
+    // TODO: fetchProjects might need to be user-specific if projects are tied to users
+    // For now, it fetches all projects as before.
+    try {
+      const list = await fetchProjects();
+      setAllProjects(list);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+      setAuthError("Could not load projects. API key might be missing or invalid on backend.");
+    }
   };
 
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!authEmail || !authPassword || !authInviteCode) {
+      setAuthError("All fields are required for signup.");
+      return;
+    }
+    try {
+      const userData = await userSignup(authEmail, authPassword, authInviteCode);
+      if (userData && userData.id) {
+        setCurrentUser(userData);
+        localStorage.setItem('ait_userId', userData.id);
+        // localStorage.setItem('ait_mockToken', 'mock_jwt_token_value'); // Placeholder for JWT
+        setAuthEmail(''); setAuthPassword(''); setAuthInviteCode(''); // Clear forms
+      } else {
+        setAuthError(userData.detail || userData.error || 'Signup failed. Please check your details.');
+      }
+    } catch (error) {
+      setAuthError(error.message || 'An error occurred during signup.');
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!authEmail || !authPassword) {
+      setAuthError("Email and password are required for login.");
+      return;
+    }
+    try {
+      const userData = await userLogin(authEmail, authPassword);
+      if (userData && userData.id) {
+        setCurrentUser(userData);
+        localStorage.setItem('ait_userId', userData.id);
+        // localStorage.setItem('ait_mockToken', 'mock_jwt_token_value');
+        setAuthEmail(''); setAuthPassword(''); // Clear forms
+      } else {
+         setAuthError(userData.detail || userData.error || 'Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      setAuthError(error.message || 'An error occurred during login.');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setProject(null); // Also clear current project on logout
+    setDataset([]);
+    setSchema(null);
+    localStorage.removeItem('ait_userId');
+    // localStorage.removeItem('ait_mockToken');
+    // setIsLoginView(true); // Optionally switch to login view on logout
+  };
+
+  // Create Project (now tied to a logged-in user, conceptually)
   const handleCreateProject = async () => {
+    if (!currentUser) {
+      alert("Please log in to create a project.");
+      return;
+    }
     const projectNamePattern = /^[a-zA-Z0-9_-]{3,30}$/;
     if (!projectName) {
       alert('Enter a project name.');
@@ -34,43 +141,133 @@ export default function App() {
       alert('Project name must be 3-30 characters long and can only contain letters, numbers, underscores, and hyphens.');
       return;
     }
-    const result = await createProject(projectName);
-    if (result?.success) {
-      setProject(result.project);
-      setProjectName('');
-      setDataset([]); // Clear dataset for new project
-      setSchema(null); // Clear schema for new project
-      loadProjects(); // refresh list
+    // The createProject API might need to be user-aware in the future (e.g., pass user_id)
+    // For now, it's still a global project creation.
+    try {
+      const result = await createProject(projectName); // Assuming createProject is still available globally
+      if (result && result.id) { // Assuming createProject now returns the project object directly
+        setProject(result); // Set the full project object
+        setProjectName('');
+        setDataset([]);
+        setSchema(null);
+        loadProjects();
+      } else {
+        alert(result.detail || "Failed to create project.");
+      }
+    } catch (error) {
+       alert(error.message || "Error creating project.");
     }
   };
 
+
+  if (!currentUser) {
+    // Auth View (Login/Signup)
+    return (
+      <div className="p-4 max-w-md mx-auto">
+        <h1 className="text-2xl font-bold text-center mb-6">AI TrainEasy MVP</h1>
+        <p className="text-sm text-center mb-4">Backend status: <span className="font-mono">{status}</span></p>
+
+        <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+          <h2 className="text-xl font-semibold mb-4 text-center">{isLoginView ? 'Login' : 'Sign Up'}</h2>
+          {authError && <p className="text-red-500 text-xs italic mb-3">{authError}</p>}
+          <form onSubmit={isLoginView ? handleLogin : handleSignup}>
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+                Email
+              </label>
+              <input
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                id="email" type="email" placeholder="Email"
+                value={authEmail} onChange={(e) => setAuthEmail(e.target.value)}
+              />
+            </div>
+            <div className="mb-6">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+                Password
+              </label>
+              <input
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
+                id="password" type="password" placeholder="******************"
+                value={authPassword} onChange={(e) => setAuthPassword(e.target.value)}
+              />
+            </div>
+            {!isLoginView && (
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="inviteCode">
+                  Invite Code
+                </label>
+                <input
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  id="inviteCode" type="text" placeholder="Invite Code"
+                  value={authInviteCode} onChange={(e) => setAuthInviteCode(e.target.value)}
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <button
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                type="submit"
+              >
+                {isLoginView ? 'Sign In' : 'Sign Up'}
+              </button>
+              <a
+                className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800 cursor-pointer"
+                onClick={() => { setIsLoginView(!isLoginView); setAuthError(''); }}
+              >
+                {isLoginView ? 'Need an account?' : 'Have an account?'}
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Application View (Logged In)
   return (
     <div className="p-4 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold">AI TrainEasy MVP</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">AI TrainEasy MVP</h1>
+        <button
+          onClick={handleLogout}
+          className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm"
+        >
+          Logout
+        </button>
+      </div>
       <p className="text-sm mt-2">Backend status: <span className="font-mono">{status}</span></p>
+      {currentUser && (
+        <div className="mt-4 p-3 bg-indigo-100 rounded border border-indigo-300 text-sm">
+          <p>Welcome, <strong className="font-semibold">{currentUser.email}</strong>!</p>
+          <p>Plan: <span className="font-semibold">{currentUser.subscription_type}</span></p>
+          <p>Export Credits: <span className="font-semibold">{currentUser.export_credits === -1 ? 'Unlimited' : currentUser.export_credits}</span></p>
+          <p>Beta Credit Available: <span className="font-semibold">{currentUser.beta_credit_available ? 'Yes ($10 Off First Plan)' : 'No'}</span></p>
+        </div>
+      )}
 
-      {/* New Project Form */}
+      {/* New Project Form - Conditionally shown or adapted based on user state */}
       <div className="mt-6 flex">
         <input
           type="text"
           className="border rounded px-2 py-1 flex-grow"
-          placeholder="Project name"
+          placeholder="New Project Name"
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
         />
         <button
           onClick={handleCreateProject}
-          className="ml-2 px-4 py-2 bg-green-600 text-white rounded"
+          className="ml-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         >
-          New Project
+          Create Project
         </button>
       </div>
 
-      {/* Created Project */}
-      {project && (
+      {/* Selected Project Details & Workflow */}
+      {project && project.id && ( // Ensure project is not just truthy but has an id
         <>
-          <pre className="bg-gray-100 p-2 rounded">{JSON.stringify(project, null, 2)}</pre>
-          <div className="mt-6">
+          <h2 className="text-xl font-semibold mt-6 mb-2">Current Project: {project.name}</h2>
+          <pre className="bg-gray-100 p-2 rounded text-xs">{JSON.stringify(project, null, 2)}</pre>
+          <div className="mt-4">
             <h2 className="text-lg font-semibold">Upload Dataset</h2>
             <DatasetBuilder project={project} onDataLoaded={setDataset} />
             {dataset.length > 0 && (

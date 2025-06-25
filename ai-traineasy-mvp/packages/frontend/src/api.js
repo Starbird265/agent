@@ -160,6 +160,35 @@ export async function fetchTrainHistory(projectId) {
   }
 }
 
+export async function fetchCurrentUser(userIdPlaceholder) { // userIdPlaceholder for current backend
+  try {
+    // In a real JWT setup, the token would be sent, and backend decodes it.
+    // For now, backend's /users/me expects X-User-Id or defaults to first user.
+    // We'll pass what's in localStorage if available.
+    const headers = { ...GET_HEADERS };
+    if (userIdPlaceholder) {
+      headers['X-User-Id'] = userIdPlaceholder;
+    }
+    // If no userIdPlaceholder is passed, backend /users/me will default to its first user logic
+    // which is fine for initial testing before full auth flow in frontend.
+
+    const res = await fetch(`${API_BASE}/users/me`, { headers });
+    if (!res.ok) {
+      try {
+        const errData = await res.json();
+        throw new Error(errData.detail || `Status ${res.status}`);
+      } catch {
+        throw new Error(`Status ${res.status}`);
+      }
+    }
+    return await res.json(); // UserResponse object
+  } catch (err) {
+    console.error('fetchCurrentUser error:', err);
+    // Don't throw here, allow App.jsx to handle null user if fetch fails
+    return null;
+  }
+}
+
 export async function cancelTraining(projectId) {
   try {
     const res = await fetch(`${API_BASE}/projects/${projectId}/train/cancel`, {
