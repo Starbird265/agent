@@ -1,20 +1,24 @@
 export const API_BASE = 'http://127.0.0.1:8000';
 
-// Define default headers, including the API key
-// In a real app, the API key should not be hardcoded like this.
-// It could be configured via environment variables or a build process.
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-API-Key': 'dev_secret_key' // As defined in backend placeholder
-};
+// New function to get headers with Authorization token
+function getAuthHeaders(isFormData = false) {
+  const headers = {};
+  const token = localStorage.getItem('accessToken');
 
-const GET_HEADERS = { // For GET requests that don't send a body
-  'X-API-Key': 'dev_secret_key'
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+  // X-API-Key is no longer used with JWT authentication
+  return headers;
 }
 
-export async function pingServer() {
+export async function pingServer() { // Public endpoint
   try {
-    const res = await fetch(`${API_BASE}/`, { headers: GET_HEADERS });
+    const res = await fetch(`${API_BASE}/`);
     if (!res.ok) throw new Error(`Status ${res.status}`);
     const data = await res.json();
     return data.status;
@@ -24,13 +28,19 @@ export async function pingServer() {
   }
 }
 
-export async function createProject(name) {
+export async function createProject(name) { // Protected
   try {
     const res = await fetch(`${API_BASE}/projects/create`, {
       method: 'POST',
-      headers: DEFAULT_HEADERS,
+      headers: getAuthHeaders(),
       body: JSON.stringify({ name })
     });
+    // Backend's createProject now returns ProjectResponse, which is fine.
+    // Error handling might need adjustment if it doesn't return {success: true} structure anymore
+    if (!res.ok) { // Assuming backend returns non-2xx for errors
+        const errData = await res.json().catch(() => ({ detail: `Failed to create project: ${res.status}` }));
+        throw new Error(errData.detail);
+    }
     return await res.json();
   } catch (err) {
     console.error(err);
@@ -38,11 +48,16 @@ export async function createProject(name) {
   }
 }
 
-export async function fetchProjects() {
+export async function fetchProjects() { // Protected
   try {
-    const res = await fetch(`${API_BASE}/projects`, { headers: GET_HEADERS });
+    const res = await fetch(`${API_BASE}/projects`, { headers: getAuthHeaders() });
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: `Failed to fetch projects: ${res.status}` }));
+        throw new Error(errData.detail);
+    }
     const data = await res.json();
-    return data.success ? data.projects : [];
+    // Backend returns list[ProjectResponse], not {success: true, projects: ...} anymore
+    return data; // Assuming it's an array of projects
   } catch (err) {
     console.error(err);
     return [];
@@ -53,10 +68,15 @@ export async function saveSchema(projectId, schema) {
   try {
     const res = await fetch(`${API_BASE}/projects/${projectId}/schema`, {
       method: 'POST',
-      headers: DEFAULT_HEADERS,
+      headers: getAuthHeaders(),
       body: JSON.stringify(schema)
     });
-    return res.ok ? res.json() : null;
+    // Assuming backend returns {success: true} or error with detail
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: `Failed to save schema: ${res.status}` }));
+        throw new Error(errData.detail);
+    }
+    return await res.json();
   } catch (err) {
     console.error('saveSchema error:', err);
     return null;
@@ -66,22 +86,29 @@ export async function saveSchema(projectId, schema) {
 export async function uploadDataset(projectId, file) {
   const form = new FormData();
   form.append('file', file);
-  // FormData sets its own Content-Type, so we only add X-API-Key
   const res = await fetch(`${API_BASE}/projects/${projectId}/data`, {
     method: 'POST',
-    headers: { 'X-API-Key': 'dev_secret_key' },
+    headers: getAuthHeaders(true), // Pass true for FormData
     body: form
   });
-  return res.ok ? res.json() : null;
+  // Assuming backend returns {success: true, filename: ...} or error with detail
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({ detail: `Failed to upload dataset: ${res.status}` }));
+    throw new Error(errData.detail);
+  }
+  return await res.json();
 }
 
-export async function predict(projectId, inputs) {
+export async function predict(projectId, inputs) { // Protected
   const res = await fetch(`${API_BASE}/projects/${projectId}/predict`, {
     method: 'POST',
-    headers: DEFAULT_HEADERS,
+    headers: getAuthHeaders(),
     body: JSON.stringify({ inputs })
   });
-  if (!res.ok) throw new Error(`Prediction failed: ${res.status}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({ detail: `Prediction failed: ${res.status}` }));
+    throw new Error(errData.detail);
+  }
   return res.json();
 }
 
