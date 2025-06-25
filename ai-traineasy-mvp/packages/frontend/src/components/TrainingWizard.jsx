@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { startTraining, fetchTrainStatus } from '../api'; // Removed pauseTraining, resumeTraining
+import { startTraining, fetchTrainStatus } from '../api';
+import TrainingHistory from './TrainingHistory'; // Import TrainingHistory
 
 export default function TrainingWizard({ projectId, schema }) {
-  // jobStatus can be: idle, starting, queued, running, finished, failed, api_error
+  // jobStatus can be: idle, starting, queued, running, finished, failed, api_error, not_started
   const [jobStatus, setJobStatus] = useState('idle');
   const [cpuPercent, setCpuPercent] = useState(100);
   const [errorMessage, setErrorMessage] = useState('');
@@ -172,6 +173,9 @@ export default function TrainingWizard({ projectId, schema }) {
         </button>
         {/* Pause and Resume buttons have been removed */}
       </div>
+
+      {/* Render TrainingHistory component */}
+      {projectId && <TrainingHistory projectId={projectId} status={jobStatus} />}
     </div>
   );
 }

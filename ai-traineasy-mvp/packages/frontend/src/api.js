@@ -138,3 +138,46 @@ export async function fetchTrainStatus(projectId) {
     return { success: false, error: err.message, status: 'api_error' };
   }
 }
+
+export async function fetchTrainHistory(projectId) {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/train/history`, {
+      headers: GET_HEADERS, // Uses X-API-Key
+    });
+    if (!res.ok) {
+      // Attempt to parse error response from backend if available
+      try {
+        const errData = await res.json();
+        throw new Error(errData.detail || `Status ${res.status}`);
+      } catch {
+        throw new Error(`Status ${res.status}`);
+      }
+    }
+    return await res.json(); // an array of { event, timestamp, details? }
+  } catch (err) {
+    console.error('fetchTrainHistory error:', err);
+    throw err; // Re-throw to be caught by calling component
+  }
+}
+
+export async function cancelTraining(projectId) {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/train/cancel`, {
+      method: 'POST',
+      headers: GET_HEADERS, // POST without a body, just X-API-Key
+    });
+    if (!res.ok) {
+      // Attempt to parse error response from backend if available
+      try {
+        const errData = await res.json();
+        throw new Error(errData.detail || `Status ${res.status}`);
+      } catch {
+        throw new Error(`Status ${res.status}`);
+      }
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('cancelTraining error:', err);
+    throw err; // Re-throw to be caught by calling component
+  }
+}
