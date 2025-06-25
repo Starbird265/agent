@@ -160,6 +160,31 @@ export async function fetchTrainHistory(projectId) {
   }
 }
 
+export async function upgradePlan(email, planType) {
+  try {
+    const res = await fetch(`${API_BASE}/billing/upgrade`, {
+      method: 'POST',
+      headers: DEFAULT_HEADERS, // Includes Content-Type and X-API-Key
+      body: JSON.stringify({ user_email: email, plan_type: planType }),
+    });
+    if (!res.ok) {
+      let errorDetail = 'Upgrade failed';
+      try {
+        const errData = await res.json();
+        errorDetail = errData.detail || `Upgrade failed with status: ${res.status}`;
+      } catch (e) {
+        // Failed to parse JSON error, use status text or generic message
+        errorDetail = res.statusText || `Upgrade failed with status: ${res.status}`;
+      }
+      throw new Error(errorDetail);
+    }
+    return await res.json(); // returns updated UserResponse object
+  } catch (err) {
+    console.error('upgradePlan error:', err);
+    throw err; // Re-throw to be caught by calling component
+  }
+}
+
 export async function fetchCurrentUser(userIdPlaceholder) { // userIdPlaceholder for current backend
   try {
     // In a real JWT setup, the token would be sent, and backend decodes it.

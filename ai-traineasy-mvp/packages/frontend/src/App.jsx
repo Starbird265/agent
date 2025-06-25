@@ -13,6 +13,7 @@ import LabelingTool from './components/LabelingTool';
 import TrainingWizard from './components/TrainingWizard';
 import PredictionUI from './components/PredictionUI';
 import TrainingFeedback from './components/TrainingFeedback';
+import UpgradeModal from './components/UpgradeModal'; // Import UpgradeModal
 
 export default function App() {
   const [status, setStatus] = useState('Connecting...');
@@ -29,6 +30,7 @@ export default function App() {
   const [authInviteCode, setAuthInviteCode] = useState('');
   const [authError, setAuthError] = useState('');
   const [isLoginView, setIsLoginView] = useState(true); // To toggle between login and signup views
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false); // State for modal visibility
 
   // Load current user on app mount
   useEffect(() => {
@@ -239,9 +241,17 @@ export default function App() {
       {currentUser && (
         <div className="mt-4 p-3 bg-indigo-100 rounded border border-indigo-300 text-sm">
           <p>Welcome, <strong className="font-semibold">{currentUser.email}</strong>!</p>
-          <p>Plan: <span className="font-semibold">{currentUser.subscription_type}</span></p>
-          <p>Export Credits: <span className="font-semibold">{currentUser.export_credits === -1 ? 'Unlimited' : currentUser.export_credits}</span></p>
-          <p>Beta Credit Available: <span className="font-semibold">{currentUser.beta_credit_available ? 'Yes ($10 Off First Plan)' : 'No'}</span></p>
+          <p>Plan: <strong className="font-semibold capitalize">{currentUser.subscription_type.replace(/_/g, ' ')}</strong></p>
+          <p>Export Credits: <strong className="font-semibold">{currentUser.subscription_type === 'unlimited_pro_annual' ? 'Unlimited' : currentUser.export_credits}</strong></p>
+          <p>Beta Credit Available: <strong className="font-semibold">{currentUser.beta_credit_available ? 'Yes ($10 Off First Plan)' : 'No'}</strong></p>
+          {currentUser.subscription_type !== 'unlimited_pro_annual' && (
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="mt-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs"
+            >
+              Upgrade Plan
+            </button>
+          )}
         </div>
       )}
 
@@ -312,6 +322,17 @@ export default function App() {
           </ul>
         )}
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        user={currentUser} // Pass the whole currentUser object
+        onUserUpdate={(updatedUser) => {
+          setCurrentUser(updatedUser); // Update App's currentUser state
+          // Optionally, re-save to localStorage if needed, though /users/me handles rehydration
+          // localStorage.setItem('ait_userId', updatedUser.id);
+        }}
+      />
     </div>
   );
 }
