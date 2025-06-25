@@ -65,6 +65,27 @@ def write_json_file(file_path: str, data):
         return False
 # --- End Data Storage Helpers ---
 
+# --- Export Control Helper ---
+def can_export(user_data: dict) -> bool:
+    """
+    Checks if the user can export a model based on their subscription type and export credits.
+    Modifies user_data in-place by decrementing credits if applicable.
+    Returns True if export is allowed, False otherwise.
+    """
+    # Ensure keys exist with defaults, especially for older user records if schema changes
+    subscription_type = user_data.get("subscription_type", "none")
+    export_credits = user_data.get("export_credits", 0)
+
+    if subscription_type == "unlimited_pro_annual": # Ensure this string matches plan activation
+        return True
+
+    if export_credits > 0:
+        user_data["export_credits"] = export_credits - 1
+        return True
+
+    return False
+# --- End Export Control Helper ---
+
 # --- Job History Function (Revised as per new instructions) ---
 def append_history(project_id: str, entry: dict):
     """
@@ -251,6 +272,72 @@ async def user_login(payload: UserLoginRequest):
     # JWT will be returned here in a later phase
     # Return the user entry, Pydantic will serialize it according to UserResponse
     return user_entry
+
+# --- Project Model Export Endpoint (Conceptual User Auth) ---
+@app.post("/projects/{project_id}/export", status_code=200)
+async def export_project_model(project_id: str): # Simulate getting user_id, replace with Depends(get_current_user) later
+    # This is a placeholder for user_id until JWT auth is implemented.
+    # In a real app, user_id would come from an auth dependency.
+    # For testing this endpoint without full auth, you might temporarily pass it as a query param
+    # or use a fixed ID known to exist in your users.json.
+
+    # --- Placeholder User ID ---
+    # To make this testable without UI for user selection yet, let's assume a user ID.
+    # Find the first user in users.json to act as the exporter.
+    # This is highly insecure and temporary.
+    users_for_placeholder = read_json_file(USERS_FILE, [])
+    if not users_for_placeholder:
+        raise HTTPException(status_code=500, detail="No users available to perform export. (Placeholder error)")
+
+    # For this conceptual endpoint, let's just pick the first user for simplicity of testing flow.
+    # In a real scenario, user_id would be from a JWT token.
+    user_id_placeholder = users_for_placeholder[0].get("id")
+    if not user_id_placeholder:
+        raise HTTPException(status_code=500, detail="First user has no ID. (Placeholder error)")
+    # --- End Placeholder User ID ---
+
+    if not PROJECT_ID_PATTERN.match(project_id):
+        raise HTTPException(status_code=400, detail="Invalid project ID format.")
+
+    # 1. Fetch user data
+    users = read_json_file(USERS_FILE, [])
+    user_data = None
+    user_idx = -1
+    for i, u in enumerate(users):
+        if u.get("id") == user_id_placeholder: # Using placeholder
+            user_data = u
+            user_idx = i
+            break
+
+    if not user_data:
+        raise HTTPException(status_code=404, detail=f"User {user_id_placeholder} not found.")
+
+    # 2. Check if user can export (this modifies user_data if credits are used)
+    if can_export(user_data):
+        # 3. Save updated user data (if credits were modified)
+        # can_export modifies user_data in-place, so we always write it back if export is allowed
+        # and credits might have changed.
+        if not write_json_file(USERS_FILE, users): # users list contains the modified user_data
+            # This is a critical failure: export allowed, credits notionally deducted, but state not saved.
+            # Ideally, this would be a transaction. For file system, log and maybe alert.
+            print(f"CRITICAL: User {user_id_placeholder} data (export credits) failed to save after export approval.")
+            raise HTTPException(status_code=500, detail="Export approved but failed to update user credits. Please contact support.")
+
+        # 4. Simulate model export
+        # TODO: Actual model export logic would go here (e.g., find model.pkl, zip, return as FileResponse)
+        print(f"Simulating model export for project {project_id} for user {user_id_placeholder}...")
+
+        return {
+            "success": True,
+            "message": f"Model export for project {project_id} initiated successfully.",
+            "user_id": user_id_placeholder,
+            "remaining_credits": user_data.get("export_credits", 0), # Show updated credits
+            "subscription_type": user_data.get("subscription_type", "none")
+        }
+    else:
+        # 5. Deny export
+        raise HTTPException(status_code=402, detail="Payment Required: Insufficient export credits or no active unlimited plan.")
+
 
 # --- Conceptual Export Control Logic (Not an active endpoint yet) ---
 # def conceptual_allow_and_process_export(user_id: str, project_id: str) -> bool:
