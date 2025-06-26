@@ -276,7 +276,7 @@ export default function App() {
             )}
             {project && dataset.length > 0 && schema && (
               <>
-                <TrainingWizard projectId={project.id} schema={schema} />
+                <TrainingWizard projectId={project.id} schema={schema} systemInfo={systemInfo} />
                 <PredictionUI projectId={project.id} schema={schema} />
                 <TrainingFeedback projectId={project.id} />
                 <div className="mt-6">
