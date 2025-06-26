@@ -7,6 +7,7 @@ import threading
 import joblib
 import pandas as pd
 import subprocess
+import torch # Added for GPU availability check
 from fastapi import Depends, Header
 from fastapi.responses import PlainTextResponse
 import signal
