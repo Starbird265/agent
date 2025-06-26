@@ -22,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: packages/frontend/Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://backend:8000 # Pass build arg to frontend Dockerfile
     image: ai-traineasy-frontend
     container_name: ai-frontend
     ports:
@@ -30,14 +32,8 @@ services:
       - backend
     networks:
       - aitraineasy_network
-    # To make API_BASE configurable at runtime for frontend:
-    # environment:
-    #   - VITE_API_BASE_URL=http://backend:8000
-    # The Dockerfile for frontend would need to be adjusted to use this,
-    # or a custom nginx.conf to proxy, or entrypoint script.
-    # For now, API_BASE in api.js is hardcoded to 127.0.0.1:8000 which will work
-    # when accessing backend via host's mapped port, but not for container-to-container.
-    # This will be addressed in the "Frontend API Base URL Configuration" step.
+    # Note: The previous environment variable approach for VITE_API_BASE_URL at runtime for Nginx
+    # is not standard for Vite which bakes it in at build time. Build args are correct.
 
 networks:
   aitraineasy_network: # Define a custom bridge network

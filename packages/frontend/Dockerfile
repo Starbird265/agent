@@ -1,6 +1,11 @@
 FROM node:20-alpine as build
 WORKDIR /app
 
+# Accept VITE_API_BASE_URL as a build argument
+ARG VITE_API_BASE_URL
+# Set it as an environment variable for the build process
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
 # Install pnpm globally
 RUN npm install -g pnpm
 
@@ -15,7 +20,7 @@ RUN pnpm install --frozen-lockfile
 # Copy the rest of the frontend code
 COPY packages/frontend/ ./
 
-# Build the application
+# Build the application (VITE_API_BASE_URL will be available here)
 RUN pnpm build
 
 # --- Serve stage ---
