@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-jose[cryptography]
+passlib[bcrypt]
+pandas
+scikit-learn
+joblib
+psutil
+torch
+pydantic

@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+    image: ai-traineasy-backend
+    container_name: ai-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount projects data for persistence
+      - ./packages/backend/projects:/app/projects
+      # Mount user data (users.json, invites.json, waiting_list.json) for persistence
+      - ./packages/backend/data:/app/data
+    env_file:
+      - .env # For JWT_SECRET_KEY etc.
+    networks:
+      - aitraineasy_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+    image: ai-traineasy-frontend
+    container_name: ai-frontend
+    ports:
+      - "5173:80" # Map host 5173 to container 80 (Nginx default)
+    depends_on:
+      - backend
+    networks:
+      - aitraineasy_network
+    # To make API_BASE configurable at runtime for frontend:
+    # environment:
+    #   - VITE_API_BASE_URL=http://backend:8000
+    # The Dockerfile for frontend would need to be adjusted to use this,
+    # or a custom nginx.conf to proxy, or entrypoint script.
+    # For now, API_BASE in api.js is hardcoded to 127.0.0.1:8000 which will work
+    # when accessing backend via host's mapped port, but not for container-to-container.
+    # This will be addressed in the "Frontend API Base URL Configuration" step.
+
+networks:
+  aitraineasy_network: # Define a custom bridge network
+    driver: bridge
