@@ -5,9 +5,10 @@ import {
   fetchProjects,
   saveSchema,
   userSignup,
-  loginForToken, // Changed from userLogin
+  loginForToken,
   fetchCurrentUser,
-  exportModel
+  exportModel,
+  fetchSystemInfo // New import
 } from './api';
 import DatasetBuilder from './components/DatasetBuilder';
 import LabelingTool from './components/LabelingTool';
@@ -31,16 +32,34 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isLoginView, setIsLoginView] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [systemInfo, setSystemInfo] = useState(null); // State for system info
 
-  // Attempt to load user on initial app mount from stored token
+  // Initial data loading (user session, system info, backend status)
   useEffect(() => {
-    pingServer().then(newStatus => setStatus(newStatus.status || newStatus)); // pingServer might return object or string
+    pingServer().then(newStatus => setStatus(newStatus.status || newStatus));
+
     const token = localStorage.getItem('accessToken');
     if (token) {
-      // api.js's fetchCurrentUser will use the token from localStorage via getAuthHeaders
-      apiFetchCurrentUser();
+      apiFetchCurrentUser(); // Will set currentUser or clear token
     }
+
+    apiFetchSystemInfo(); // Fetch system info regardless of login state initially
   }, []); // Empty dependency array ensures this runs only once on mount
+
+  const apiFetchSystemInfo = async () => {
+    try {
+      const sysInfo = await fetchSystemInfo();
+      if (sysInfo) {
+        setSystemInfo(sysInfo);
+      } else {
+        console.error("System info came back null/undefined from API");
+        // Optionally set an error state or default systemInfo
+      }
+    } catch (error) {
+      console.error("Failed to fetch system info:", error);
+      // Optionally set an error state to display to the user
+    }
+  };
 
   // Utility function to fetch and set current user, used after login/signup and on mount
   const apiFetchCurrentUser = async () => {
@@ -48,14 +67,14 @@ export default function App() {
     if (user && user.id) {
       setCurrentUser(user);
     } else {
-      setCurrentUser(null); // Ensure currentUser is null if fetch fails or token is invalid
-      localStorage.removeItem('accessToken'); // Clean up invalid token
+      setCurrentUser(null);
+      localStorage.removeItem('accessToken');
     }
   };
 
-  // Fetch projects when currentUser state changes (i.e., user logs in)
+  // Fetch projects when currentUser state changes
   useEffect(() => {
-    if (currentUser && currentUser.id) { // Ensure currentUser is valid before loading projects
+    if (currentUser && currentUser.id) {
       loadProjects();
     } else {
       setAllProjects([]);
