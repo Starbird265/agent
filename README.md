@@ -7,11 +7,20 @@ AI TrainEasy is a no-code platform for training and deploying machine learning m
 This project uses Docker and Docker Compose for a consistent development environment.
 
 1.  **Environment Variables**:
-    Copy the `.env.example` file to `.env` and fill in the necessary values, especially `JWT_SECRET_KEY`.
-    ```bash
-    cp .env.example .env
-    # Then edit .env with your actual secrets
+    Copy or create a `.env` file in the project root. You can use `.env.example` as a template.
+    It should contain the following variables, replacing placeholder values with your actual keys/DSNs where applicable:
+
+    ```env
+    # Backend secrets & configuration
+    JWT_SECRET_KEY=your_super_secret_random_32_byte_hex_key_here_for_jwt
+    SENTRY_DSN=your_backend_sentry_dsn_here_if_using_sentry
+
+    # Frontend build-time configuration for local Docker development
+    # This VITE_API_BASE_URL is used by the browser to access the backend via the host's mapped port.
+    VITE_API_BASE_URL=http://localhost:8000
+    VITE_SENTRY_DSN=your_frontend_sentry_dsn_here_if_using_sentry
     ```
+    Ensure you replace placeholder values like `your_super_secret_random_32_byte_hex_key_here_for_jwt` with your actual strong keys.
 
 2.  **Run Containers**:
     Build and start the frontend and backend services:
