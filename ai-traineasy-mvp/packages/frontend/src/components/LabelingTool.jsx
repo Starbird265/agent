@@ -20,11 +20,14 @@ const LabelingTool = ({ data, onSchemaSave }) => {
   };
 
   return (
-    <div className="mt-6 p-4 border rounded bg-white shadow">
-      <h2 className="text-lg font-semibold mb-2">🧩 Label Columns</h2>
+    <div className="p-6 rounded-2xl bg-white/90 shadow-lg border border-blue-100 flex flex-col gap-6 mt-8">
+      <h2 className="text-xl font-bold mb-2 text-blue-700 flex items-center gap-2">
+        <span className="inline-block bg-blue-100 text-blue-700 rounded-full p-2 text-lg">🧩</span>
+        Label Columns
+      </h2>
       <div className="mb-4">
-        <label className="font-medium">Input Columns:</label>
-        <div className="flex flex-wrap gap-2 mt-1">
+        <label className="font-semibold text-gray-700">Input Columns:</label>
+        <div className="flex flex-wrap gap-2 mt-2">
           {columns.map(col => (
             <button
               key={col}
@@ -35,10 +38,10 @@ const LabelingTool = ({ data, onSchemaSave }) => {
                     : [...prev, col]
                 )
               }
-              className={`px-3 py-1 border rounded ${
+              className={`px-4 py-2 rounded-lg border transition-all duration-150 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                 inputs.includes(col)
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
               }`}
             >
               {col}
@@ -48,9 +51,9 @@ const LabelingTool = ({ data, onSchemaSave }) => {
       </div>
 
       <div className="mb-4">
-        <label className="font-medium">Output Column:</label>
+        <label className="font-semibold text-gray-700">Output Column:</label>
         <select
-          className="ml-2 border px-2 py-1 rounded"
+          className="ml-2 border border-blue-200 px-3 py-2 rounded-lg bg-white focus:ring-2 focus:ring-blue-200"
           value={output}
           onChange={e => setOutput(e.target.value)}
         >
@@ -65,7 +68,7 @@ const LabelingTool = ({ data, onSchemaSave }) => {
 
       <button
         onClick={handleSubmit}
-        className="bg-green-600 text-white px-4 py-2 rounded"
+        className="mt-2 px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg shadow hover:from-green-600 hover:to-emerald-600 font-semibold text-lg"
       >
         Save Schema
       </button>

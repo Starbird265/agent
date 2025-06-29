@@ -30,33 +30,35 @@ export default function DatasetBuilder({ project, onDataLoaded }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   return (
-    <div className="p-4 border-2 border-dashed rounded">
-      <div {...getRootProps()} className="cursor-pointer p-6 text-center">
+    <div className="p-6 border-2 border-dashed border-blue-300 rounded-2xl bg-white/80 shadow-lg flex flex-col items-center transition-all duration-200">
+      <div {...getRootProps()} className="cursor-pointer p-8 w-full text-center rounded-xl border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-xl transition-all duration-200">
         <input {...getInputProps()} />
         {isDragActive
-          ? <p>Drop your file here …</p>
-          : <p>Drag & drop CSV/JSON here, or click to select</p>}
+          ? <p className="text-blue-700 font-semibold text-lg">Drop your file here …</p>
+          : <p className="text-gray-500 text-lg">Drag & drop <span className='font-semibold text-blue-600'>CSV/JSON</span> here, or <span className='underline text-blue-600'>click to select</span></p>}
       </div>
 
       {preview.length > 0 && (
-        <table className="table-auto w-full mt-4 text-sm">
-          <thead>
-            <tr>
-              {Object.keys(preview[0]).map(col => (
-                <th key={col} className="px-2 py-1 border">{col}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {preview.map((row, idx) => (
-              <tr key={idx}>
-                {Object.values(row).map((val, i) => (
-                  <td key={i} className="px-2 py-1 border">{val}</td>
+        <div className="w-full mt-6 overflow-x-auto">
+          <table className="table-auto w-full text-sm rounded-xl overflow-hidden shadow border border-blue-100 bg-white">
+            <thead className="bg-blue-50">
+              <tr>
+                {Object.keys(preview[0]).map(col => (
+                  <th key={col} className="px-3 py-2 border-b text-blue-700 font-semibold">{col}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {preview.map((row, idx) => (
+                <tr key={idx} className="even:bg-blue-50">
+                  {Object.values(row).map((val, i) => (
+                    <td key={i} className="px-3 py-2 border-b text-gray-700">{val}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
