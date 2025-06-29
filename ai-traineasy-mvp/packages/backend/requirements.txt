@@ -7,3 +7,4 @@ psutil
 GPUtil
 fastapi
 uvicorn
+huggingface_hub
