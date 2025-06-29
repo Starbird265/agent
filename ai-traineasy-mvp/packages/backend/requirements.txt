@@ -8,3 +8,4 @@ GPUtil
 fastapi
 uvicorn
 huggingface_hub
+python-multipart
