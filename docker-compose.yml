@@ -4,43 +4,31 @@ services:
     build:
       context: .
       dockerfile: packages/backend/Dockerfile
-    image: ai-traineasy-backend
     container_name: ai-backend
     ports:
       - "8000:8000"
     volumes:
-      # Mount projects data for persistence
       - ./packages/backend/projects:/app/projects
-      # Mount user data (users.json, invites.json, waiting_list.json) for persistence
       - ./packages/backend/data:/app/data
     env_file:
-      - .env # For JWT_SECRET_KEY etc.
-    networks:
-      - aitraineasy_network
+      - .env      # loads JWT_SECRET_KEY and SENTRY_DSN
 
   frontend:
     build:
       context: .
       dockerfile: packages/frontend/Dockerfile
       args:
-        # This will take the value of VITE_API_BASE_URL from the environment
-        # running docker-compose (which typically loads it from the .env file).
-        # If VITE_API_BASE_URL is not set in that environment, it will be passed as empty.
-        # The Dockerfile's ARG can have a default, or api.js can have a fallback.
-        # api.js already has a fallback: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-        # So, just passing it through is fine.
-        - VITE_API_BASE_URL
-    image: ai-traineasy-frontend
+        # Pass the VITE_API_BASE_URL from .env for local dev
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     container_name: ai-frontend
     ports:
-      - "5173:80" # Map host 5173 to container 80 (Nginx default)
+      - "5173:80"
     depends_on:
       - backend
-    networks:
-      - aitraineasy_network
-    # Note: The previous environment variable approach for VITE_API_BASE_URL at runtime for Nginx
-    # is not standard for Vite which bakes it in at build time. Build args are correct.
+    env_file:
+      - .env      # loads VITE_SENTRY_DSN (only used if you run dev server inside Docker)
 
-networks:
-  aitraineasy_network: # Define a custom bridge network
-    driver: bridge
+# networks:  # optional
+#   default:
+#     name: aitraineasy_network
+#     driver: bridge

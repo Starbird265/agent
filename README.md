@@ -4,34 +4,25 @@ AI TrainEasy is a no-code platform for training and deploying machine learning m
 
 ## Local Development with Docker
 
-This project uses Docker and Docker Compose for a consistent development environment.
+1. Copy `.env.example` to `.env` and fill in:
+   ```bash
+   cp .env.example .env
+   # Then edit .env to set your JWT_SECRET_KEY, SENTRY_DSN,
+   # VITE_API_BASE_URL (e.g. http://localhost:8000) and VITE_SENTRY_DSN
+   ```
 
-1.  **Environment Variables**:
-    Copy or create a `.env` file in the project root. You can use `.env.example` as a template.
-    It should contain the following variables, replacing placeholder values with your actual keys/DSNs where applicable:
+2. Build and start both services:
 
-    ```env
-    # Backend secrets & configuration
-    JWT_SECRET_KEY=your_super_secret_random_32_byte_hex_key_here_for_jwt
-    SENTRY_DSN=your_backend_sentry_dsn_here_if_using_sentry
+   ```bash
+   docker-compose up --build
+   ```
 
-    # Frontend build-time configuration for local Docker development
-    # This VITE_API_BASE_URL is used by the browser to access the backend via the host's mapped port.
-    VITE_API_BASE_URL=http://localhost:8000
-    VITE_SENTRY_DSN=your_frontend_sentry_dsn_here_if_using_sentry
-    ```
-    Ensure you replace placeholder values like `your_super_secret_random_32_byte_hex_key_here_for_jwt` with your actual strong keys.
+3. In your browser:
 
-2.  **Run Containers**:
-    Build and start the frontend and backend services:
-    ```bash
-    docker-compose up --build
-    ```
-    The `--build` flag is only needed the first time or when Dockerfiles or source code that affects the image (like `requirements.txt` or `package.json`) changes. Subsequent starts can use `docker-compose up`.
+   * **Frontend** at [http://localhost:5173](http://localhost:5173)
+   * **Backend docs** at [http://localhost:8000/docs](http://localhost:8000/docs)
 
-3.  **Accessing Services**:
-    *   **Frontend**: [http://localhost:5173/](http://localhost:5173/)
-    *   **Backend API Docs (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+The frontend container will use the `VITE_API_BASE_URL` from `.env` so that all API calls point to your local FastAPI backend.
 
 ## Building Frontend for Production/Custom Environments
 
