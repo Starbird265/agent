@@ -622,48 +622,62 @@ async def save_schema(project_id: str, request: Request):
 
     return {"success": True}
 
-# Standalone function for running the training job (Revised: no job_id parameter for history)
-def run_training_job(project_id: str, cpu_limit: int):
+# Standalone function for running the training job
+def run_training_job(project_id: str, cpu_limit: int, selected_device: str):
     """
-    Runs the training script for a given project_id with a specified CPU limit.
+    Runs the appropriate training script (CPU or GPU) for a given project_id.
     This function is intended to be run in a separate process.
     It appends event entries to the job history.
     """
     project_dir_path = os.path.join("projects", project_id)
-    log_path = os.path.join(project_dir_path, "train.log")
-    pid_path = os.path.join(project_dir_path, "train.pid") # For external monitoring or cancellation (if PID is reliable)
+    log_path = os.path.join(project_dir_path, "train.log") # Combined log for simplicity
+    pid_path = os.path.join(project_dir_path, "train.pid")
 
     os.makedirs(project_dir_path, exist_ok=True)
 
-    append_history(project_id, {"event": "running", "timestamp": time.time()})
+    # Determine which script to use
+    use_gpu_script = False
+    if selected_device.startswith("cuda") or selected_device == "gpu": # Basic check for GPU selection
+        # More robust check: verify torch.cuda.is_available() here if possible,
+        # or rely on the script itself to fallback/error if GPU not truly available.
+        # For now, assume frontend's systemInfo was accurate enough for user to choose.
+        if os.path.exists(os.path.join(os.path.dirname(__file__), "train_model_gpu.py")):
+            use_gpu_script = True
+            print(f"Project {project_id}: GPU training selected. Using train_model_gpu.py.")
+        else:
+            print(f"Project {project_id}: GPU training selected, but train_model_gpu.py not found. Falling back to CPU.")
+            selected_device = "cpu" # Force CPU if script missing
+
+    train_script_name = "train_model_gpu.py" if use_gpu_script else "train_model.py"
+    train_script_path = os.path.join(os.path.dirname(__file__), train_script_name)
+
+    # Log which script and device are being used
+    # Append to history before job starts actual execution
+    append_history(project_id, {
+        "event": "processing_start", # Changed from "running" to avoid confusion with process state
+        "timestamp": time.time(),
+        "details": {"script": train_script_name, "device_requested": selected_device, "cpu_limit": cpu_limit if not use_gpu_script else "N/A"}
+    })
 
     try:
         with open(log_path, "w") as log_file:
-            cmd = []
             python_executable = sys.executable
-            train_script_path = os.path.join(os.path.dirname(__file__), "train_model.py")
-
             base_cmd = [python_executable, train_script_path, project_id]
+            cmd = base_cmd
 
-            if 0 < cpu_limit < 100:
-                # Check if cpulimit is available (basic check)
+            # cpulimit is primarily for CPU-bound processes.
+            # It might not be ideal or effective for GPU training scripts that are I/O or GPU bound.
+            if not use_gpu_script and 0 < cpu_limit < 100:
                 if subprocess.call(["which", "cpulimit"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
                     cmd = ["cpulimit", "-l", str(cpu_limit), "--"] + base_cmd
                 else:
-                    log_file.write("Warning: cpulimit utility not found. Running without CPU limit.\n")
-                    cmd = base_cmd
-            else:
-                cmd = base_cmd
+                    log_file.write("Warning: cpulimit utility not found. Running CPU training without CPU limit.\n")
+            elif use_gpu_script:
+                log_file.write(f"Info: GPU training selected for project {project_id}. CPU limit not applied.\n")
 
-            # Using Popen directly as before. The parent process (this function) will wait.
-            proc = subprocess.Popen(
-                cmd,
-                # cwd=os.path.dirname(__file__), # train_model.py should handle its own paths relative to itself or CWD
-                stdout=log_file,
-                stderr=log_file
-            )
 
-            # Write PID of the actual training process (python train_model.py or cpulimit)
+            proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT) # Combine stdout/stderr
+
             with open(pid_path, "w") as f_pid:
                 f_pid.write(str(proc.pid))
 
@@ -671,35 +685,29 @@ def run_training_job(project_id: str, cpu_limit: int):
 
             if proc.returncode != 0:
                 log_file.write(f"\nTraining process failed with return code {proc.returncode}\n")
-                append_history(project_id, {
-                    "event": "failed", # Specific error details are in train.log / train_error.log
-                    "timestamp": time.time()
-                })
+                append_history(project_id, {"event": "failed", "timestamp": time.time(), "details": {"return_code": proc.returncode}})
                 return False # Indicate failure
             else:
                 append_history(project_id, {"event": "finished", "timestamp": time.time()})
+                return True # Indicate success
 
     except Exception as e:
-        append_history(project_id, {
-            "event": "failed", # Specific error details are in train.log / train_error.log
-            "timestamp": time.time()
-        })
-        # Log any exception that occurs during setup or execution within this job to separate file
-        error_log_path = os.path.join(project_dir_path, "train_error.log") # This log is more for system debugging
+        # This catches errors in this launching function itself, not usually errors from the subprocess
+        # (unless Popen fails, etc.)
+        append_history(project_id, {"event": "launch_error", "timestamp": time.time(), "details": {"error": str(e)}})
+        error_log_path = os.path.join(project_dir_path, "launch_error.log")
         with open(error_log_path, "a") as ef:
-            # job_id is not available here anymore, so logging project_id
-            ef.write(f"Training for project {project_id} failed: {str(e)}\nTraceback: {traceback.format_exc()}\n")
-        raise # Re-raise for ProcessPoolExecutor to catch
+            ef.write(f"Training launch for project {project_id} failed: {str(e)}\nTraceback: {traceback.format_exc()}\n")
+        # Do not re-raise here if we want ProcessPoolExecutor to see it as a "returned" failure
+        return False # Indicate failure due to launch problem
     finally:
-        # Clean up PID file
         if os.path.exists(pid_path):
             os.remove(pid_path)
 
-    return True # Indicate success by subprocess completing with 0 and no exceptions
-
 
 class TrainRequest(BaseModel):
-    cpu_percent: int = 100  # default to 100%
+    cpu_percent: int = 100  # Default for CPU training
+    device: str = "cpu"     # Default device, e.g., "cpu", "cuda:0"
 
 @app.post("/projects/{project_id}/train")
 async def train_project(project_id: str, body: TrainRequest):
@@ -708,44 +716,69 @@ async def train_project(project_id: str, body: TrainRequest):
 
     project_dir_path = os.path.join("projects", project_id)
     if not os.path.isdir(project_dir_path):
-        # This check ensures that data upload and schema save likely happened.
         raise HTTPException(status_code=404, detail=f"Project directory for {project_id} not found. Ensure project exists and data/schema are uploaded.")
 
-    # Check if task is already running or queued for this project_id
     if project_id in training_tasks:
         future = training_tasks[project_id]
         if not future.done():
-            status = "running" if future.running() else "queued"
+            status = "running" if future.running() else "queued" # "running" here means future.running(), not our internal state
             raise HTTPException(status_code=409, detail=f"Training is already {status} for project {project_id}.")
-        # If done, allow re-submission. Consider clearing old task if it failed.
-        # For simplicity, we overwrite the old future if resubmitting after completion.
 
-    # Ensure the directory for logs/pid exists (run_training_job also does this, but good for early check)
-    os.makedirs(project_dir_path, exist_ok=True)
+    os.makedirs(project_dir_path, exist_ok=True) # Ensure project specific dir for logs etc.
+
+    # Basic check for GPU availability if GPU is requested
+    # A more robust system might check this before queuing or have worker capabilities.
+    selected_device = body.device.lower()
+    if selected_device.startswith("cuda") or selected_device == "gpu":
+        try:
+            # Check if torch can see CUDA. This is a runtime check on the server.
+            # This import and check should ideally be quick.
+            # If torch is not installed, this will fail.
+            if not torch.cuda.is_available():
+                append_history(project_id, {
+                    "event": "submission_failed",
+                    "timestamp": time.time(),
+                    "details": {"reason": f"GPU ({selected_device}) requested, but CUDA not available on server."}
+                })
+                raise HTTPException(status_code=400, detail=f"GPU ({selected_device}) requested, but CUDA not available on the server. Select CPU.")
+            # Optionally, could check if the specific cuda device (e.g. cuda:0, cuda:1) is valid
+            # if selected_device.startswith("cuda:"):
+            #   device_id = int(selected_device.split(":")[1])
+            #   if device_id >= torch.cuda.device_count():
+            #       raise HTTPException(status_code=400, detail=f"Requested {selected_device} is not available.")
+        except ImportError:
+            append_history(project_id, {
+                "event": "submission_failed",
+                "timestamp": time.time(),
+                "details": {"reason": "PyTorch is not installed or not configured correctly, cannot check CUDA availability."}
+            })
+            raise HTTPException(status_code=500, detail="Server error: Cannot verify GPU availability (PyTorch issue).")
+        except Exception as e: # Catch other torch.cuda errors
+            append_history(project_id, {
+                "event": "submission_failed",
+                "timestamp": time.time(),
+                "details": {"reason": f"Error checking GPU availability: {str(e)}"}
+            })
+            raise HTTPException(status_code=500, detail=f"Server error checking GPU availability: {str(e)}.")
+
 
     try:
-        # job_id is no longer passed to run_training_job for history purposes with the new event model
-        future = executor.submit(run_training_job, project_id, body.cpu_percent)
+        future = executor.submit(run_training_job, project_id, body.cpu_percent, selected_device)
         training_tasks[project_id] = future
-
         append_history(project_id, {
             "event": "queued",
-            "timestamp": time.time()
-            # If details like cpu_percent are needed in history, add a "details": {} field.
-            # For now, matching the simpler spec: {"event": "status", "timestamp": ...}
+            "timestamp": time.time(),
+            "details": {"device_requested": selected_device, "cpu_limit_for_cpu_jobs": body.cpu_percent}
         })
     except Exception as e:
-        # Handle rare errors during submission itself
         append_history(project_id, {
-            "event": "submission_failed", # This event implies an error. Specifics in server logs.
-            "timestamp": time.time()
+            "event": "submission_failed",
+            "timestamp": time.time(),
+            "details": {"error": str(e)}
         })
         raise HTTPException(status_code=500, detail=f"Failed to submit training job to executor: {str(e)}")
 
-    # job_id is not critical for the client if history is just a log of events per project.
-    # If a unique identifier for this specific submission attempt is still needed by client,
-    # it could be generated here and returned, but not necessarily used for history correlation.
-    return {"success": True, "status": "queued", "project_id": project_id}
+    return {"success": True, "status": "queued", "project_id": project_id, "device_requested": selected_device}
 
 @app.get("/projects/{project_id}/train/history")
 async def get_training_history(project_id: str):

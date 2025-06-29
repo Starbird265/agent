@@ -1,22 +1,36 @@
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
-// New function to get headers with Authorization token
-function getAuthHeaders(isFormData = false) {
+// Consistent header function for all authenticated requests
+function getAuthenticatedHeaders(isFormData = false) {
   const headers = {};
+  // Prioritize JWT token if available (for future-proofing)
   const token = localStorage.getItem('accessToken');
+  // Vite exposes env variables prefixed with VITE_
+  const apiKey = import.meta.env.VITE_API_KEY;
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    // If we were to use JWT with the backend:
+    // headers['Authorization'] = `Bearer ${token}`;
+    // However, current backend uses X-API-Key, so we'll use that if no JWT.
+    // For now, we will prefer API Key as backend is not JWT ready.
   }
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  } else if (!token) {
+    // If neither JWT nor API key is available, critical auth info is missing.
+    // This shouldn't happen if .env is set up correctly for VITE_API_KEY.
+    console.warn('API Key is missing. Ensure VITE_API_KEY is set in your .env file and rebuild if necessary.');
+  }
+
 
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
   }
-  // X-API-Key is no longer used with JWT authentication
   return headers;
 }
 
-export async function pingServer() { // Public endpoint
+export async function pingServer() { // Public endpoint, no auth needed
   try {
     const res = await fetch(`${API_BASE}/`);
     if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -28,39 +42,49 @@ export async function pingServer() { // Public endpoint
   }
 }
 
-export async function createProject(name) { // Protected
+// Centralized error handler for API calls
+async function handleApiResponse(response) {
+    if (!response.ok) {
+        let errorDetail = `Request failed with status: ${response.status}`;
+        try {
+            const errData = await response.json();
+            errorDetail = errData.detail || errorDetail;
+        } catch (e) {
+            // Ignore if error response is not JSON, use status text or generic message
+            errorDetail = response.statusText || errorDetail;
+        }
+        throw new Error(errorDetail);
+    }
+    // For 204 No Content, res.json() would fail. Check status explicitly.
+    if (response.status === 204) {
+        return null; // Or { success: true } if appropriate
+    }
+    return response.json();
+}
+
+
+export async function createProject(name) {
   try {
     const res = await fetch(`${API_BASE}/projects/create`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getAuthenticatedHeaders(),
       body: JSON.stringify({ name })
     });
-    // Backend's createProject now returns ProjectResponse, which is fine.
-    // Error handling might need adjustment if it doesn't return {success: true} structure anymore
-    if (!res.ok) { // Assuming backend returns non-2xx for errors
-        const errData = await res.json().catch(() => ({ detail: `Failed to create project: ${res.status}` }));
-        throw new Error(errData.detail);
-    }
-    return await res.json();
+    return await handleApiResponse(res);
   } catch (err) {
-    console.error(err);
-    return null;
+    console.error('createProject error:', err);
+    throw err; // Re-throw for component to handle
   }
 }
 
-export async function fetchProjects() { // Protected
+export async function fetchProjects() {
   try {
-    const res = await fetch(`${API_BASE}/projects`, { headers: getAuthHeaders() });
-    if (!res.ok) {
-        const errData = await res.json().catch(() => ({ detail: `Failed to fetch projects: ${res.status}` }));
-        throw new Error(errData.detail);
-    }
-    const data = await res.json();
-    // Backend returns list[ProjectResponse], not {success: true, projects: ...} anymore
-    return data; // Assuming it's an array of projects
+    const res = await fetch(`${API_BASE}/projects`, { headers: getAuthenticatedHeaders() });
+    const data = await handleApiResponse(res);
+    return data || []; // Ensure it returns an array even if data is null (e.g. from 204)
   } catch (err) {
-    console.error(err);
-    return [];
+    console.error('fetchProjects error:', err);
+    throw err;
   }
 }
 
@@ -68,173 +92,145 @@ export async function saveSchema(projectId, schema) {
   try {
     const res = await fetch(`${API_BASE}/projects/${projectId}/schema`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getAuthenticatedHeaders(),
       body: JSON.stringify(schema)
     });
-    // Assuming backend returns {success: true} or error with detail
-    if (!res.ok) {
-        const errData = await res.json().catch(() => ({ detail: `Failed to save schema: ${res.status}` }));
-        throw new Error(errData.detail);
-    }
-    return await res.json();
+    return await handleApiResponse(res);
   } catch (err) {
     console.error('saveSchema error:', err);
-    return null;
+    throw err;
   }
 }
 
 export async function uploadDataset(projectId, file) {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${API_BASE}/projects/${projectId}/data`, {
-    method: 'POST',
-    headers: getAuthHeaders(true), // Pass true for FormData
-    body: form
-  });
-  // Assuming backend returns {success: true, filename: ...} or error with detail
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ detail: `Failed to upload dataset: ${res.status}` }));
-    throw new Error(errData.detail);
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/data`, {
+      method: 'POST',
+      headers: getAuthenticatedHeaders(true), // Pass true for FormData
+      body: form
+    });
+    return await handleApiResponse(res);
+  } catch (err) {
+    console.error('uploadDataset error:', err);
+    throw err;
   }
-  return await res.json();
 }
 
-export async function predict(projectId, inputs) { // Protected
-  const res = await fetch(`${API_BASE}/projects/${projectId}/predict`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ inputs })
-  });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ detail: `Prediction failed: ${res.status}` }));
-    throw new Error(errData.detail);
+export async function predict(projectId, inputs) {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/predict`, {
+      method: 'POST',
+      headers: getAuthenticatedHeaders(),
+      body: JSON.stringify({ inputs })
+    });
+    return await handleApiResponse(res);
+  } catch (err) {
+    console.error('predict error:', err);
+    throw err;
   }
-  return res.json();
 }
 
 export async function fetchLogs(projectId) {
-  const res = await fetch(`${API_BASE}/projects/${projectId}/logs`, { headers: GET_HEADERS });
-  if (!res.ok) throw new Error(`Logs fetch failed: ${res.status}`);
-  return res.text();
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/logs`, { headers: getAuthenticatedHeaders() });
+    if (!res.ok) { // Plain text response, handle differently if error
+        const errorDetail = await res.text() || `Logs fetch failed: ${res.status}`;
+        throw new Error(errorDetail);
+    }
+    return res.text();
+  } catch (err) {
+    console.error('fetchLogs error:', err);
+    throw err;
+  }
 }
 
-// pauseTraining and resumeTraining are kept for now but should be removed
-// as backend functionality was removed. Or updated if pause/resume is re-added.
-export async function pauseTraining(projectId) {
-  const res = await fetch(`${API_BASE}/projects/${projectId}/train/pause`, {
-    method: 'POST',
-    headers: GET_HEADERS // Assuming no body, just API key
-  });
-  return res.ok ? res.json() : null;
-}
-
-export async function startTraining(projectId, cpuPercent) {
-  const res = await fetch(`${API_BASE}/projects/${projectId}/train`, {
-    method: 'POST',
-    headers: DEFAULT_HEADERS,
-    body: JSON.stringify({ cpu_percent: cpuPercent }),
-  });
-  if (!res.ok) throw new Error(`Train failed: ${res.status}`);
-  return res.json();
-}
-
-export async function resumeTraining(projectId) {
-  const res = await fetch(`${API_BASE}/projects/${projectId}/train/resume`, {
-    method: 'POST',
-    headers: GET_HEADERS // Assuming no body, just API key
-  });
-  return res.ok ? res.json() : null;
+export async function startTraining(projectId, cpuPercent, selectedDevice = 'cpu') {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${projectId}/train`, {
+      method: 'POST',
+      headers: getAuthenticatedHeaders(),
+      // Payload will be updated in the next step to include selectedDevice
+      body: JSON.stringify({ cpu_percent: cpuPercent, device: selectedDevice }),
+    });
+    return await handleApiResponse(res);
+  } catch (err) {
+    console.error('startTraining error:', err);
+    throw err;
+  }
 }
 
 export async function fetchTrainStatus(projectId) {
   try {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/train/status`, { headers: GET_HEADERS });
-    if (!res.ok) {
-      // Attempt to parse error response from backend if available
-      try {
-        const errData = await res.json();
-        throw new Error(errData.detail || `Status ${res.status}`);
-      } catch {
-        throw new Error(`Status ${res.status}`);
-      }
-    }
-    return await res.json();
+    const res = await fetch(`${API_BASE}/projects/${projectId}/train/status`, { headers: getAuthenticatedHeaders() });
+    return await handleApiResponse(res);
   } catch (err) {
     console.error('fetchTrainStatus error:', err);
-    // Return a specific structure or null to indicate API call failure
-    return { success: false, error: err.message, status: 'api_error' };
+    // Specific handling for UI if needed, or rethrow
+    // For UI consistency, it might expect a certain structure on error.
+    // throw err;
+    return { success: false, error: err.message, status: 'api_error' }; // Keep similar error structure as before
   }
 }
 
 export async function fetchTrainHistory(projectId) {
   try {
     const res = await fetch(`${API_BASE}/projects/${projectId}/train/history`, {
-      headers: GET_HEADERS, // Uses X-API-Key
+      headers: getAuthenticatedHeaders(),
     });
-    if (!res.ok) {
-      // Attempt to parse error response from backend if available
-      try {
-        const errData = await res.json();
-        throw new Error(errData.detail || `Status ${res.status}`);
-      } catch {
-        throw new Error(`Status ${res.status}`);
-      }
-    }
-    return await res.json(); // an array of { event, timestamp, details? }
+    return await handleApiResponse(res);
   } catch (err) {
     console.error('fetchTrainHistory error:', err);
-    throw err; // Re-throw to be caught by calling component
+    throw err;
   }
 }
 
 export async function exportModel(projectId) {
   try {
     const res = await fetch(`${API_BASE}/projects/${projectId}/export`, {
-      method: 'POST', // Backend endpoint is POST
-      headers: DEFAULT_HEADERS, // Includes X-API-Key and Content-Type
-      // No body needed for this POST request based on backend implementation
+      method: 'POST',
+      headers: getAuthenticatedHeaders(),
     });
 
-    if (res.status === 402) { // Payment Required
+    if (res.status === 402) { // Payment Required specific handling
       let errorDetail = 'Export limit reached or payment required.';
       try {
-        const errData = await res.json();
+        const errData = await res.json(); // Try to parse JSON error
         errorDetail = errData.detail || errorDetail;
-      } catch (e) {
-        // Ignore if error response is not JSON
-      }
+      } catch (e) { /* Ignore if error response is not JSON */ }
       throw new Error(errorDetail);
     }
 
-    if (!res.ok) {
-      // Try to get more specific error from backend if possible
-      let errorDetail = `Export failed with status: ${res.status}`;
-      try {
-        const errData = await res.json(); // Assuming error might be JSON
-        errorDetail = errData.detail || errorDetail;
-      } catch (e) {
-         // Ignore if error response is not JSON
-      }
-      throw new Error(errorDetail);
+    if (!res.ok) { // General error handling for non-402 errors
+        return await handleApiResponse(res); // Use centralized handler
     }
 
-    // Process the file download
+    // Process the file download for successful responses (e.g., 200 OK with blob)
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${projectId}-model.pkl`; // Or get filename from Content-Disposition header if backend sets it
+    // Try to get filename from Content-Disposition header if backend sets it
+    const disposition = res.headers.get('content-disposition');
+    let filename = `${projectId}-model.export`; // Default filename
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+        }
+    }
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(url); // Clean up
+    window.URL.revokeObjectURL(url);
     a.remove();
-    // No explicit return value needed as it triggers a download.
-    // Can return true/success if needed by caller to confirm initiation.
     return { success: true, message: "Model download initiated." };
 
   } catch (err) {
     console.error('exportModel error:', err);
-    throw err; // Re-throw to be caught by calling component
+    throw err;
   }
 }
 
@@ -242,52 +238,48 @@ export async function upgradePlan(email, planType) {
   try {
     const res = await fetch(`${API_BASE}/billing/upgrade`, {
       method: 'POST',
-      headers: DEFAULT_HEADERS, // Includes Content-Type and X-API-Key
+      headers: getAuthenticatedHeaders(),
       body: JSON.stringify({ user_email: email, plan_type: planType }),
     });
-    if (!res.ok) {
-      let errorDetail = 'Upgrade failed';
-      try {
-        const errData = await res.json();
-        errorDetail = errData.detail || `Upgrade failed with status: ${res.status}`;
-      } catch (e) {
-        // Failed to parse JSON error, use status text or generic message
-        errorDetail = res.statusText || `Upgrade failed with status: ${res.status}`;
-      }
-      throw new Error(errorDetail);
-    }
-    return await res.json(); // returns updated UserResponse object
+    return await handleApiResponse(res);
   } catch (err) {
     console.error('upgradePlan error:', err);
-    throw err; // Re-throw to be caught by calling component
+    throw err;
   }
 }
 
-export async function fetchCurrentUser(userIdPlaceholder) { // userIdPlaceholder for current backend
-  try {
-    // In a real JWT setup, the token would be sent, and backend decodes it.
-    // For now, backend's /users/me expects X-User-Id or defaults to first user.
-    // We'll pass what's in localStorage if available.
-    const headers = { ...GET_HEADERS };
-    if (userIdPlaceholder) {
-      headers['X-User-Id'] = userIdPlaceholder;
-    }
-    // If no userIdPlaceholder is passed, backend /users/me will default to its first user logic
-    // which is fine for initial testing before full auth flow in frontend.
+// userLogin and userSignup manage tokens, so they don't use getAuthenticatedHeaders
+export async function userLogin(email, password) {
+    const res = await fetch(`${API_BASE}/auth/token`, { // Assuming this is the token endpoint
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, // FastAPI's OAuth2PasswordRequestForm
+        body: new URLSearchParams({ username: email, password: password })
+    });
+    // If login is successful, backend returns token. handleApiResponse will parse it.
+    // If login fails, backend returns error (e.g. 401), handleApiResponse will throw.
+    return await handleApiResponse(res);
+}
 
-    const res = await fetch(`${API_BASE}/users/me`, { headers });
-    if (!res.ok) {
-      try {
-        const errData = await res.json();
-        throw new Error(errData.detail || `Status ${res.status}`);
-      } catch {
-        throw new Error(`Status ${res.status}`);
-      }
-    }
-    return await res.json(); // UserResponse object
+export async function userSignup(email, password, inviteCode) {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, // Signup takes JSON
+        body: JSON.stringify({ email, password, invite_code: inviteCode })
+    });
+    return await handleApiResponse(res);
+}
+
+
+export async function fetchCurrentUser() {
+  // This endpoint should ideally be protected by JWT if login provides one.
+  // For now, it will use X-API-Key via getAuthenticatedHeaders.
+  // The backend /users/me needs to be updated to use the chosen auth method.
+  try {
+    const res = await fetch(`${API_BASE}/users/me`, { headers: getAuthenticatedHeaders() });
+    return await handleApiResponse(res);
   } catch (err) {
     console.error('fetchCurrentUser error:', err);
-    // Don't throw here, allow App.jsx to handle null user if fetch fails
+    // Allow App.jsx to handle null user if fetch fails, don't throw globally here
     return null;
   }
 }
@@ -296,20 +288,28 @@ export async function cancelTraining(projectId) {
   try {
     const res = await fetch(`${API_BASE}/projects/${projectId}/train/cancel`, {
       method: 'POST',
-      headers: GET_HEADERS, // POST without a body, just X-API-Key
+      headers: getAuthenticatedHeaders(), // Ensure this uses API key
     });
-    if (!res.ok) {
-      // Attempt to parse error response from backend if available
-      try {
-        const errData = await res.json();
-        throw new Error(errData.detail || `Status ${res.status}`);
-      } catch {
-        throw new Error(`Status ${res.status}`);
-      }
-    }
-    return await res.json();
+    return await handleApiResponse(res);
   } catch (err) {
     console.error('cancelTraining error:', err);
-    throw err; // Re-throw to be caught by calling component
+    throw err;
+  }
+}
+
+// Placeholder for fetching system info (e.g., GPU availability)
+// This would be a new endpoint on the backend.
+export async function fetchSystemInfo() {
+  try {
+    // Assuming a new backend endpoint like /system/info
+    // This endpoint might or might not require authentication depending on sensitivity.
+    // For now, let's assume it's okay to use getAuthenticatedHeaders or could be public.
+    const res = await fetch(`${API_BASE}/system/info`, { headers: getAuthenticatedHeaders() });
+    return await handleApiResponse(res);
+  } catch (err) {
+    console.error('fetchSystemInfo error:', err);
+    // It's crucial for UI elements, so perhaps return a default or throw
+    // For now, rethrow so the caller can decide on fallback.
+    throw err;
   }
 }
