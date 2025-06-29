@@ -1,6 +1,7 @@
 import psutil
 import torch
-from fastapi import FastAPI, Request, File, UploadFile, Body, HTTPException
+import GPUtil
+from fastapi import FastAPI, Request, File, UploadFile, Body, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 import os, json, uuid
 from datetime import datetime
@@ -9,8 +10,11 @@ import threading
 import joblib
 import pandas as pd
 import subprocess
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 import signal
+from huggingface_hub import snapshot_download
+import requests
+import shutil
 
 app = FastAPI()
 
@@ -21,9 +25,29 @@ async def system_info():
     mem = psutil.virtual_memory()
     total_ram_gb = round(mem.total / (1024**3), 2)
     ram_percent = mem.percent
-    gpu_available = torch.cuda.is_available()
-    gpu_count = torch.cuda.device_count() if gpu_available else 0
-    gpu_names = [torch.cuda.get_device_name(i) for i in range(gpu_count)] if gpu_available else []
+
+    # GPU detection (NVIDIA, AMD, Intel)
+    gpus = []
+    try:
+        for gpu in GPUtil.getGPUs():
+            gpus.append({
+                "id": gpu.id,
+                "name": gpu.name,
+                "driver": gpu.driver,
+                "memory_total": gpu.memoryTotal,
+                "memory_used": gpu.memoryUsed,
+                "memory_free": gpu.memoryFree,
+                "load": gpu.load,
+                "temperature": gpu.temperature,
+                "uuid": gpu.uuid
+            })
+    except Exception:
+        pass
+
+    gpu_available = len(gpus) > 0
+    gpu_count = len(gpus)
+    gpu_names = [g["name"] for g in gpus]
+
     return {
         "cpu_count": cpu_count,
         "cpu_percent": cpu_percent,
@@ -31,7 +55,8 @@ async def system_info():
         "ram_percent": ram_percent,
         "gpu_available": gpu_available,
         "gpu_count": gpu_count,
-        "gpu_names": gpu_names
+        "gpu_names": gpu_names,
+        "gpus": gpus
     }
 
 @app.get("/projects/{project_id}/training-log")
@@ -100,7 +125,9 @@ async def upload_dataset(project_id: str, file: UploadFile = File(...)):
     data_dir = os.path.join(project_dir, 'data')
     os.makedirs(data_dir, exist_ok=True)
 
-    file_path = os.path.join(data_dir, file.filename)
+    # Use a default filename if file.filename is None
+    filename = file.filename or "uploaded_file"
+    file_path = os.path.join(data_dir, filename)
     contents = await file.read()
     with open(file_path, 'wb') as f:
         f.write(contents)
@@ -207,3 +234,86 @@ async def predict(project_id: str, body: PredictRequest = Body(...)):
     preds = model.predict(df).tolist()
 
     return {"success": True, "predictions": preds}
+
+@app.post("/download-hf-model")
+async def download_hf_model(model_id: str = Form(...), project_id: str = Form(...)):
+    """
+    Download a model from Hugging Face Hub into the project's directory.
+    """
+    token = os.environ.get("HUGGINGFACE_HUB_TOKEN")
+    if not token:
+        return {"success": False, "error": "Hugging Face token not set in environment variable HUGGINGFACE_HUB_TOKEN."}
+    target_dir = os.path.join("projects", project_id, "hf_models", model_id.replace('/', '__'))
+    os.makedirs(target_dir, exist_ok=True)
+    try:
+        snapshot_download(
+            repo_id=model_id,
+            cache_dir=target_dir,
+            token=token,
+            local_files_only=False,
+            resume_download=True
+        )
+        return {"success": True, "message": f"Model '{model_id}' downloaded to {target_dir}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/search-hf-models")
+async def search_hf_models(q: str):
+    """
+    Search Hugging Face Hub for models matching the query string.
+    """
+    try:
+        resp = requests.get(
+            "https://huggingface.co/api/models",
+            params={"search": q, "limit": 10},
+            headers={"Authorization": f"Bearer {os.environ.get('HUGGINGFACE_HUB_TOKEN', '')}"}
+        )
+        resp.raise_for_status()
+        models = resp.json()
+        # Return only relevant info
+        return [{
+            "modelId": m["modelId"],
+            "pipeline_tag": m.get("pipeline_tag"),
+            "likes": m.get("likes", 0),
+            "downloads": m.get("downloads", 0),
+            "description": m.get("cardData", {}).get("summary", "")
+        } for m in models]
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/projects/{project_id}/hf-models")
+async def list_downloaded_hf_models(project_id: str):
+    """
+    List all downloaded Hugging Face models for a project, with metadata.
+    """
+    import time
+    models_dir = os.path.join("projects", project_id, "hf_models")
+    if not os.path.isdir(models_dir):
+        return {"models": []}
+    models = []
+    for d in os.listdir(models_dir):
+        model_path = os.path.join(models_dir, d)
+        if os.path.isdir(model_path):
+            stat = os.stat(model_path)
+            models.append({
+                "model_id": d.replace("__", "/"),
+                "local_dir": model_path,
+                "size_mb": round(sum(os.path.getsize(os.path.join(dp, f)) for dp, dn, filenames in os.walk(model_path) for f in filenames) / 1024 / 1024, 2),
+                "last_modified": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stat.st_mtime))
+            })
+    return {"models": models}
+
+@app.delete("/projects/{project_id}/hf-models")
+async def delete_all_downloaded_hf_models(project_id: str):
+    """
+    Delete all downloaded Hugging Face models for a project.
+    """
+    models_dir = os.path.join("projects", project_id, "hf_models")
+    if not os.path.isdir(models_dir):
+        return {"success": True, "message": "No models to delete."}
+    try:
+        shutil.rmtree(models_dir)
+        os.makedirs(models_dir, exist_ok=True)
+        return {"success": True, "message": "All models deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -116,3 +116,14 @@ export async function fetchSystemInfo() {
     return null;
   }
 }
+
+export async function downloadHuggingFaceModel(modelId, projectId) {
+  const form = new FormData();
+  form.append('model_id', modelId);
+  form.append('project_id', projectId);
+  const res = await fetch(`${API_BASE}/download-hf-model`, {
+    method: 'POST',
+    body: form
+  });
+  return res.ok ? res.json() : { success: false, error: 'Network error' };
+}

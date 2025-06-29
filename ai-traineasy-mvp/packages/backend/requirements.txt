@@ -1,0 +1,9 @@
+pandas
+scikit-learn
+lightgbm
+joblib
+torch
+psutil
+GPUtil
+fastapi
+uvicorn

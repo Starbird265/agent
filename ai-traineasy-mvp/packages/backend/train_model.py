@@ -1,4 +1,21 @@
 import sys, os, json
+import importlib
+import subprocess
+
+def ensure_packages(packages):
+    """Check and install missing packages at runtime."""
+    for pkg in packages:
+        try:
+            importlib.import_module(pkg)
+        except ImportError:
+            print(f"[AutoInstall] Installing missing package: {pkg}")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+
+# At the top of your script, before other imports:
+ensure_packages([
+    "pandas", "sklearn", "lightgbm", "joblib", "torch", "psutil", "GPUtil"
+])
+
 import pandas as pd
 from joblib import dump
 from sklearn.model_selection import cross_val_score
@@ -8,6 +25,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
+import torch
 
 # 1) Setup paths
 project_id = sys.argv[1]
@@ -57,9 +75,17 @@ preprocessor = ColumnTransformer([
 # 7) Choose model candidates based on problem type
 is_classification = len(set(y)) <= 20  # heuristic
 
+# Detect device: use GPU if available, else CPU
+if torch.cuda.is_available():
+    device = 'cuda'
+    print('GPU detected. Training will use CUDA.')
+else:
+    device = 'cpu'
+    print('No GPU detected. Training will use CPU.')
+
 candidates = {
     "RandomForest": RandomForestClassifier(n_estimators=100) if is_classification else RandomForestRegressor(n_estimators=100),
-    "LightGBM": LGBMClassifier(n_estimators=100) if is_classification else LGBMRegressor(n_estimators=100),
+    "LightGBM": (LGBMClassifier(n_estimators=100, device=device) if is_classification else LGBMRegressor(n_estimators=100, device=device)),
 }
 
 # 8) Evaluate each in a pipeline

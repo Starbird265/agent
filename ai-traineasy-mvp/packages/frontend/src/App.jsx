@@ -5,6 +5,7 @@ import LabelingTool from './components/LabelingTool';
 import TrainingWizard from './components/TrainingWizard';
 import PredictionUI from './components/PredictionUI';
 import TrainingFeedback from './components/TrainingFeedback';
+import HuggingFaceModelDownloader from './components/HuggingFaceModelDownloader';
 
 export default function App() {
   const [status, setStatus] = useState('Connecting...');
@@ -83,6 +84,8 @@ export default function App() {
             <div className="card">
               <h2 className="text-lg font-semibold mb-4 text-blue-700">Upload Dataset</h2>
               <DatasetBuilder project={project} onDataLoaded={setDataset} />
+              {/* Hugging Face Model Downloader */}
+              <HuggingFaceModelDownloader projectId={project.id} />
               {dataset.length > 0 && (
                 <LabelingTool data={dataset} onSchemaSave={(schema) => {
                   saveSchema(project.id, schema).then(response => {
