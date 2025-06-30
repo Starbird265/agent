@@ -8,7 +8,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "test:perf": "lighthouse-ci --collect.url=http://localhost:5173 --collect.settings.chromeFlags=\"--headless\"",
-    "report:perf": "lighthouse-ci report",
+    "report:perf": "lighthouse-ci report"
   },
   "keywords": [],
   "author": "",
