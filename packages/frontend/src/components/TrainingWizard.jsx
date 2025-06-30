@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { startTraining, pauseTraining, resumeTraining, fetchSystemInfo } from '../api';
+import { startTraining, fetchSystemInfo } from '../api';
 import { fetchTrainingLog } from '../api';
 
 const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema }) {
@@ -104,8 +104,6 @@ const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema })
           onClick={handleStart}
           disabled={status === 'running' || isLoading}
           className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-500 text-white rounded-lg shadow-lg hover:shadow-xl hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ease-out hover:scale-[1.03] active:scale-95 transform-gpu"
-          style={{ contain: 'content', willChange: 'transform' }}
-          // Change to:
           style={{ transform: 'translateZ(0)' }}
         >
           {isLoading ? (
@@ -165,48 +163,19 @@ const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema })
           </button>
           <div className={`px-4 pb-4 text-sm ${isExpanded ? 'animate-slide-down' : 'hidden'}`}>
             <p className="mb-2"><strong>Problem:</strong> {trainingLog.problem_type}</p>
-          <ul className="list-disc ml-6 mb-2">
-            {Object.entries(trainingLog.scores).map(([model, score]) => (
-              <li key={model}>
-                <span className="font-medium text-blue-900">{model}</span>: <span className="text-blue-700">{score.toFixed(4)}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2">✅ <strong>Selected:</strong> <span className="text-green-700 font-bold">{trainingLog.selected_model}</span></p>
+            <ul className="list-disc ml-6 mb-2">
+              {Object.entries(trainingLog.scores).map(([model, score]) => (
+                <li key={model}>
+                  <span className="font-medium text-blue-900">{model}</span>: <span className="text-blue-700">{score.toFixed(4)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2">✅ <strong>Selected:</strong> <span className="text-green-700 font-bold">{trainingLog.selected_model}</span></p>
+          </div>
         </div>
       )}
     </div>
   );
-}
-@media (max-width: 640px) {
-  .grid { grid-template-columns: 1fr; }
-  button { 
-    width: 100%;
-    min-height: 48px;
-    padding: 1rem 1.25rem;
-    font-size: 1rem;
-    touch-action: manipulation;
-  }
-  .rounded-2xl {
-    border-radius: 1rem;
-    margin: 0 -1rem;
-    width: calc(100% + 2rem);
-  }
-  .text-xl {
-    font-size: 1.25rem;
-  }
-  .gap-6 {
-    gap: 1rem;
-  }
-  input[type='range'] {
-    margin-top: 0.5rem;
-  }
-}
+});
 
-@keyframes pulse {
-  50% { opacity: 0.6; }
-}
-
-.running-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}", "code_language": "javascript
+export default TrainingWizard;

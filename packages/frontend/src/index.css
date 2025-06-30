@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --primary-50: #eff6ff;
@@ -369,6 +369,49 @@ button:disabled:hover {
   button {
     padding: 0.875rem 1.5rem;
   }
+}
+
+@media (max-width: 640px) {
+  .grid { 
+    grid-template-columns: 1fr; 
+  }
+  
+  button { 
+    width: 100%;
+    min-height: 48px;
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    touch-action: manipulation;
+  }
+  
+  .rounded-2xl {
+    border-radius: 1rem;
+    margin: 0 -1rem;
+    width: calc(100% + 2rem);
+  }
+  
+  .text-xl {
+    font-size: 1.25rem;
+  }
+  
+  .gap-6 {
+    gap: 1rem;
+  }
+  
+  input[type='range'] {
+    margin-top: 0.5rem;
+  }
+}
+
+/* Training Animation */
+@keyframes pulse {
+  50% { 
+    opacity: 0.6; 
+  }
+}
+
+.running-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Dark mode support */
