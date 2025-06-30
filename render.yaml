@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-traineasy-backend
+    runtime: python3
+    repo: https://github.com/Starbird265/agent
+    branch: main
+    rootDir: packages/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main_simple.py
+    plan: free
+    envVars:
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "10000"
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: https://ai-traineasy-frontend.onrender.com
