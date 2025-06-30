@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { pingServer, createProject, fetchProjects, saveSchema, fetchSystemInfo } from './api';
+import InvitationGate from './components/InvitationGate';
 import DatasetBuilder from './components/DatasetBuilder';
 import LabelingTool from './components/LabelingTool';
 import TrainingWizard from './components/TrainingWizard';
@@ -97,7 +98,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <InvitationGate>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Notifications */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {notifications.map((notification) => (
@@ -604,5 +606,6 @@ export default function App() {
         </div>
       </footer>
     </div>
+    </InvitationGate>
   );
 }

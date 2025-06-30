@@ -17,7 +17,11 @@ export function removeToken() {
 // Authentication headers
 function getAuthHeaders() {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const sessionToken = localStorage.getItem('session_token');
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(sessionToken ? { 'X-Session-Token': sessionToken } : {})
+  };
 }
 
 export async function pingServer() {

@@ -22,6 +22,22 @@ import shutil
 import logging
 from typing import Optional
 
+# Import invitation system
+from invitation_system import invitation_manager
+
+# Authentication middleware
+def require_valid_session(request: Request):
+    """Check if request has valid session token"""
+    session_token = request.headers.get('X-Session-Token')
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Session token required")
+    
+    if not invitation_manager.validate_session(session_token):
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    
+    return True
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -41,12 +57,13 @@ app = FastAPI(
 )
 
 # Secure CORS Configuration
+cors_origins = os.getenv('CORS_ORIGINS', '').split(',') if os.getenv('CORS_ORIGINS') else []
 allowed_origins = [
     "http://localhost:5173",
     "http://localhost:3000", 
     "https://localhost:5173",
     "https://localhost:3000"
-]
+] + cors_origins
 
 app.add_middleware(
     CORSMiddleware,
@@ -90,6 +107,15 @@ class PredictRequest(BaseModel):
             raise ValueError('Inputs must be a non-empty dictionary')
         return v
 
+class InvitationRequest(BaseModel):
+    code: str
+    
+    @validator('code')
+    def validate_code(cls, v):
+        if not v or len(v.strip()) < 3:
+            raise ValueError('Invitation code is required')
+        return v.strip().upper()
+
 # Health check endpoint
 @app.get("/")
 async def read_root():
@@ -108,8 +134,70 @@ async def health_check():
         "version": "1.0.0-beta"
     }
 
+# Invitation System Endpoints
+@app.post("/auth/validate-invitation")
+async def validate_invitation(request: Request, invitation_request: InvitationRequest):
+    """Validate invitation code and create session"""
+    try:
+        client_ip = request.client.host if hasattr(request, 'client') else 'unknown'
+        
+        # Validate the invitation code
+        validation = invitation_manager.validate_code(invitation_request.code)
+        
+        if not validation['valid']:
+            raise HTTPException(status_code=401, detail=validation['reason'])
+        
+        # Use the code and create session
+        session_token = invitation_manager.use_code(invitation_request.code, client_ip)
+        
+        if not session_token:
+            raise HTTPException(status_code=500, detail="Failed to create session")
+        
+        return {
+            "success": True,
+            "session_token": session_token,
+            "message": "Welcome to AI TrainEasy Beta!",
+            "expires_in": "24 hours"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Invitation validation error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/auth/session-info")
+async def get_session_info(request: Request):
+    """Get current session information"""
+    try:
+        session_token = request.headers.get('X-Session-Token')
+        
+        if not session_token:
+            raise HTTPException(status_code=401, detail="No session token provided")
+        
+        if not invitation_manager.validate_session(session_token):
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        
+        # Get session details
+        session = invitation_manager.sessions.get(session_token, {})
+        
+        return {
+            "valid": True,
+            "created": session.get('created'),
+            "expires": session.get('expires'),
+            "code_used": session.get('code'),
+            "stats": invitation_manager.get_stats()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Session info error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @app.get("/system-info")
-async def system_info():
+async def system_info(request: Request):
+    require_valid_session(request)
     """Get system information"""
     try:
         cpu_count = psutil.cpu_count(logical=True)
@@ -156,7 +244,8 @@ async def system_info():
         raise HTTPException(status_code=500, detail="Failed to retrieve system information")
 
 @app.get("/projects")
-async def list_projects():
+async def list_projects(request: Request):
+    require_valid_session(request)
     """List all projects"""
     projects_dir = "projects"
     try:
@@ -182,7 +271,8 @@ async def list_projects():
         raise HTTPException(status_code=500, detail="Failed to list projects")
 
 @app.post("/projects/create")
-async def create_project(data: ProjectCreateRequest):
+async def create_project(request: Request, data: ProjectCreateRequest):
+    require_valid_session(request)
     """Create a new project"""
     try:
         project = {
@@ -561,4 +651,19 @@ async def search_hf_models(q: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
+    # Get host and port from environment variables for Render deployment
+    host = os.getenv('HOST', '0.0.0.0')
+    port = int(os.getenv('PORT', 8000))
+    
+    print(f"🚀 Starting AI TrainEasy Backend on {host}:{port}")
+    print(f"📋 Allowed CORS origins: {allowed_origins}")
+    print(f"🔐 Invitation system initialized with {len(invitation_manager.active_codes)} codes")
+    
+    uvicorn.run(
+        app, 
+        host=host, 
+        port=port,
+        log_level="info",
+        access_log=True
+    )
