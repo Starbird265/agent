@@ -9,7 +9,7 @@ services:
     startCommand: |
       cd packages/backend &&
       python main_simple.py
-    plan: starter
+    plan: free
     healthCheckPath: /health
     autoDeploy: false
     envVars:
@@ -18,7 +18,7 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: PORT
-        value: 8000
+        value: 10000
       - key: ENVIRONMENT
         value: production
       - key: CORS_ORIGINS
@@ -34,7 +34,7 @@ services:
       npm run build
     publishDir: packages/frontend/dist
     staticPublishPath: ./packages/frontend/dist
-    plan: starter
+    plan: free
     autoDeploy: false
     envVars:
       - key: NODE_VERSION
