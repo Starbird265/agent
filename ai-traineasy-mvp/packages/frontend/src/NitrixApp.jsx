@@ -3,7 +3,7 @@ import IntentCapture from './components/Nitrix/IntentCapture';
 import PipelineOrchestrator from './components/Nitrix/PipelineOrchestrator';
 import ModelDashboard from './components/Nitrix/ModelDashboard';
 import { localDB } from './lib/localDB';
-import './App.css';
+import './index.css';
 
 /**
  * NITRIX - AI Training as a Service

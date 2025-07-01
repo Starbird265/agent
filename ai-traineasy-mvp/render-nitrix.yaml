@@ -1,0 +1,52 @@
+services:
+  # Nitrix Frontend (Static Site)
+  - type: web
+    name: nitrix-frontend
+    runtime: static
+    buildCommand: |
+      cd packages/frontend &&
+      npm install &&
+      npm run build
+    publishDir: packages/frontend/dist
+    staticPublishPath: ./packages/frontend/dist
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+    # Custom domain and headers for Nitrix
+    headers:
+      - path: /*
+        headers:
+          X-Frame-Options: DENY
+          X-Content-Type-Options: nosniff
+          Referrer-Policy: strict-origin-when-cross-origin
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # Optional: Nitrix Backend (only if you need server features later)
+  - type: web
+    name: nitrix-backend
+    runtime: python
+    buildCommand: |
+      cd packages/backend &&
+      pip install -r requirements.txt
+    startCommand: |
+      cd packages/backend &&
+      python main.py
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: https://nitrix-frontend.onrender.com
