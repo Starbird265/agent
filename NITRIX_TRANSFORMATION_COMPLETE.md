@@ -1,4 +1,6 @@
-# 🚀 NITRIX - AI Training as a Service (TRANSFORMATION COMPLETE)
+# 🚀 NITRIX - Train Smarter AI—No Cloud, No Code, Just Power
+
+## **OFFICIAL TAGLINE:** *Train Smarter AI—No Cloud, No Code, Just Power*
 
 ## 🎯 **THE TRANSFORMATION**
 

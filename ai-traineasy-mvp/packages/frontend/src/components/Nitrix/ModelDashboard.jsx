@@ -89,9 +89,12 @@ console.log(result);`;
           <h2 className="text-2xl font-bold text-gray-900">
             {showOnlyActive ? 'Active Models' : 'Model Dashboard'}
           </h2>
-          <p className="text-gray-600">
-            Your trained AI models ready for production use
-          </p>
+          <div>
+            <p className="text-gray-600 mb-1">
+              Your trained AI models ready for production use
+            </p>
+            <p className="text-xs text-purple-600 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
           <button

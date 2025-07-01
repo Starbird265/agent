@@ -156,9 +156,12 @@ const IntentCapture = ({ onIntentSubmit, onCancel }) => {
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
           Create Your AI Model
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-2">
           Simply describe what you want your AI to do. No technical knowledge required - 
           just explain your use case in plain English.
+        </p>
+        <p className="text-sm text-purple-600 font-medium">
+          Train Smarter AI—No Cloud, No Code, Just Power
         </p>
       </div>
 

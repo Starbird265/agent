@@ -1,6 +1,8 @@
-# 🤖 AI TrainEasy MVP
+# 🚀 Nitrix - Train Smarter AI—No Cloud, No Code, Just Power
 
-**Automated Machine Learning Made Simple**
+**The Revolutionary AI Training Platform That Eliminates Complexity**
+
+> **Official Tagline:** *Train Smarter AI—No Cloud, No Code, Just Power*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)

@@ -191,10 +191,10 @@ console.log(result);
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-6"></div>
           <h2 className="text-3xl font-bold text-gray-800 mb-4">Nitrix</h2>
-          <p className="text-gray-600 mb-4">AI Training as a Service</p>
+          <p className="text-lg text-gray-600 mb-4 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
           <div className="text-sm text-gray-500">
-            <p>🚀 Initializing automated ML platform...</p>
-            <p>✨ No IDEs. No YAMLs. Zero DevOps.</p>
+            <p>🚀 Initializing your private ML platform...</p>
+            <p>✨ Everything stays on your device. Zero technical knowledge needed.</p>
           </div>
         </div>
       </div>
@@ -224,7 +224,7 @@ console.log(result);
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Nitrix</h1>
-                  <p className="text-sm text-gray-500">AI Training as a Service</p>
+                  <p className="text-sm text-gray-500 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
                 </div>
               </div>
             </div>

@@ -106,7 +106,8 @@ const PipelineOrchestrator = ({ trainingQueue, onRefresh }) => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Training Pipeline</h2>
-          <p className="text-gray-600">Fully automated ML training in progress</p>
+          <p className="text-gray-600 mb-1">Fully automated ML training in progress</p>
+          <p className="text-xs text-purple-600 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
         </div>
         <div className="flex items-center space-x-4">
           <button
@@ -166,8 +167,13 @@ const PipelineOrchestrator = ({ trainingQueue, onRefresh }) => {
                 <div className="text-sm text-green-700">Manual Steps Required</div>
               </div>
             </div>
-            <div className="mt-4 text-center text-sm text-purple-600">
-              ✨ Everything is automated - just sit back and watch the magic happen!
+            <div className="mt-4 text-center">
+              <div className="text-sm text-purple-600 mb-1">
+                ✨ Everything is automated - just sit back and watch the magic happen!
+              </div>
+              <div className="text-xs text-gray-500 font-medium">
+                Train Smarter AI—No Cloud, No Code, Just Power
+              </div>
             </div>
           </div>
         </div>
