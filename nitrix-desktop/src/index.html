@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nitrix - Train Smarter AI</title>
+    <link rel="stylesheet" href="../assets/index-BiNj61Yr.css">
+    <style>
+        /* Desktop-specific styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Title bar for Windows/Linux */
+        .title-bar {
+            height: 32px;
+            background: #2d3748;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            color: white;
+            font-size: 13px;
+            -webkit-app-region: drag;
+        }
+
+        .title-bar-buttons {
+            -webkit-app-region: no-drag;
+            display: flex;
+            gap: 8px;
+        }
+
+        .title-bar-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .title-bar-button.close { background: #ff5f57; }
+        .title-bar-button.minimize { background: #ffbd2e; }
+        .title-bar-button.maximize { background: #28ca42; }
+
+        /* Main app container */
+        .app-container {
+            height: calc(100vh - 32px);
+            overflow: auto;
+        }
+
+        /* macOS specific styles */
+        body.macos .title-bar {
+            display: none;
+        }
+
+        body.macos .app-container {
+            height: 100vh;
+        }
+
+        /* Electron-specific UI enhancements */
+        .desktop-menu-hint {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            animation: fadeInOut 4s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            20%, 80% { opacity: 1; }
+        }
+
+        /* Custom scrollbar for desktop */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Title bar for Windows/Linux -->
+    <div class="title-bar" id="titleBar">
+        <div class="title-text">Nitrix - Train Smarter AI</div>
+        <div class="title-bar-buttons">
+            <button class="title-bar-button minimize" onclick="minimizeWindow()"></button>
+            <button class="title-bar-button maximize" onclick="maximizeWindow()"></button>
+            <button class="title-bar-button close" onclick="closeWindow()"></button>
+        </div>
+    </div>
+
+    <!-- Main app -->
+    <div class="app-container" id="appContainer">
+        <div id="root" class="bg-gray-50 min-h-full"></div>
+    </div>
+
+    <!-- Desktop menu hint -->
+    <div class="desktop-menu-hint" id="menuHint">
+        Press Ctrl+N to create a new project
+    </div>
+
+    <!-- Load React app -->
+    <script src="../assets/index-D4hJSVkQ.js"></script>
+    <script src="../assets/index-S94XVbbs.js"></script>
+
+    <script>
+        // Desktop-specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            // Detect platform and adjust UI
+            if (window.electronAPI) {
+                window.electronAPI.getPlatform().then(platform => {
+                    document.body.classList.add(platform);
+                    
+                    // Update menu hint based on platform
+                    const hint = document.getElementById('menuHint');
+                    if (platform === 'darwin') {
+                        hint.textContent = 'Press ⌘+N to create a new project';
+                    }
+                });
+
+                // Get app version and display
+                window.electronAPI.getAppVersion().then(version => {
+                    document.title = `Nitrix v${version} - Train Smarter AI`;
+                });
+
+                // Listen for menu actions
+                window.electronAPI.onMenuAction((event, action, data) => {
+                    handleMenuAction(action, data);
+                });
+            }
+
+            // Show menu hint after 2 seconds
+            setTimeout(() => {
+                document.getElementById('menuHint').style.opacity = '1';
+            }, 2000);
+        });
+
+        // Window controls
+        function minimizeWindow() {
+            // Electron will handle this through the main process
+        }
+
+        function maximizeWindow() {
+            // Electron will handle this through the main process
+        }
+
+        function closeWindow() {
+            window.close();
+        }
+
+        // Handle menu actions from Electron
+        function handleMenuAction(action, data) {
+            switch (action) {
+                case 'new-project':
+                    // Trigger new project in React app
+                    window.dispatchEvent(new CustomEvent('electron-menu', {
+                        detail: { action: 'new-project' }
+                    }));
+                    break;
+                
+                case 'open-project':
+                    window.dispatchEvent(new CustomEvent('electron-menu', {
+                        detail: { action: 'open-project', path: data }
+                    }));
+                    break;
+                
+                case 'export-model':
+                    window.dispatchEvent(new CustomEvent('electron-menu', {
+                        detail: { action: 'export-model' }
+                    }));
+                    break;
+                
+                case 'train-model':
+                    window.dispatchEvent(new CustomEvent('electron-menu', {
+                        detail: { action: 'train-model' }
+                    }));
+                    break;
+                
+                case 'test-model':
+                    window.dispatchEvent(new CustomEvent('electron-menu', {
+                        detail: { action: 'test-model' }
+                    }));
+                    break;
+                
+                case 'model-settings':
+                    window.dispatchEvent(new CustomEvent('electron-menu', {
+                        detail: { action: 'model-settings' }
+                    }));
+                    break;
+            }
+        }
+
+        // Enhanced file operations for desktop
+        window.desktopAPI = {
+            saveFile: async (defaultPath, filters) => {
+                if (window.electronAPI) {
+                    return await window.electronAPI.showSaveDialog({
+                        defaultPath,
+                        filters
+                    });
+                }
+                return null;
+            },
+            
+            openFile: async (filters) => {
+                if (window.electronAPI) {
+                    return await window.electronAPI.showOpenDialog({
+                        properties: ['openFile'],
+                        filters
+                    });
+                }
+                return null;
+            },
+            
+            writeFile: async (path, data) => {
+                if (window.electronAPI) {
+                    return await window.electronAPI.writeFile(path, data);
+                }
+                return { success: false, error: 'Not in desktop mode' };
+            },
+            
+            readFile: async (path) => {
+                if (window.electronAPI) {
+                    return await window.electronAPI.readFile(path);
+                }
+                return { success: false, error: 'Not in desktop mode' };
+            }
+        };
+
+        // Global error handler for desktop
+        window.addEventListener('error', (event) => {
+            console.error('Desktop App Error:', event.error);
+        });
+
+        // Prevent drag and drop of files on window
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Handle file drops for training data
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+                window.dispatchEvent(new CustomEvent('files-dropped', {
+                    detail: { files }
+                }));
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+name: Build Nitrix Desktop Apps
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'nitrix-desktop/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd nitrix-desktop
+          npm ci
+
+      - name: Build React app first
+        run: |
+          cd ai-traineasy-mvp/packages/frontend
+          npm ci
+          npm run build
+          cd ../../../nitrix-desktop
+          cp -r ../ai-traineasy-mvp/packages/frontend/dist/assets ./assets/
+
+      - name: Build Electron app (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd nitrix-desktop
+          npm run build:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Build Electron app (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd nitrix-desktop
+          npm run build:win
+
+      - name: Build Electron app (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd nitrix-desktop
+          npm run build:linux
+
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nitrix-macos
+          path: nitrix-desktop/dist/*.dmg
+
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nitrix-windows
+          path: nitrix-desktop/dist/*.exe
+
+      - name: Upload artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nitrix-linux
+          path: nitrix-desktop/dist/*.AppImage
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            nitrix-macos/*.dmg
+            nitrix-windows/*.exe
+            nitrix-linux/*.AppImage
+          body: |
+            ## 🚀 Nitrix Desktop v${{ github.ref_name }}
+            
+            **Train Smarter AI—No Cloud, No Code, Just Power**
+            
+            ### 📦 Downloads:
+            - **macOS**: `.dmg` file (Apple Silicon & Intel)
+            - **Windows**: `.exe` installer (64-bit)
+            - **Linux**: `.AppImage` portable app
+            
+            ### 🎯 Features:
+            - 🧠 **AI Training**: Create custom models with natural language
+            - 🔒 **Complete Privacy**: Everything runs locally on your device
+            - ⚡ **No Code Required**: Describe what you want in plain English
+            - 🎨 **Native Desktop Experience**: Optimized for each platform
+            
+            ### 🔐 Access:
+            This is a private beta. You need an invite code to download.
+            
+            ### 📝 Installation:
+            - **macOS**: Open `.dmg` and drag to Applications
+            - **Windows**: Run `.exe` and follow installer
+            - **Linux**: Make `.AppImage` executable and run
+            
+            ### 🆕 What's New:
+            - Initial desktop release
+            - Cross-platform support
+            - Enhanced file operations
+            - Native menus and shortcuts
+            
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
