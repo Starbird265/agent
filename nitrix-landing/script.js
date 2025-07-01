@@ -1,13 +1,13 @@
-// Supabase Configuration
-const SUPABASE_URL = 'https://your-supabase-url.supabase.co';
-const SUPABASE_ANON_KEY = 'your-anon-key';
+// Supabase Configuration - UPDATE THESE WITH YOUR ACTUAL VALUES
+const SUPABASE_URL = 'https://your-project-id.supabase.co';
+const SUPABASE_ANON_KEY = 'your-anon-public-key-here';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Download URLs (these would be actual release URLs)
+// Download URLs - UPDATE THESE AFTER CREATING GITHUB RELEASE
 const DOWNLOAD_URLS = {
-    macos: 'https://github.com/Starbird265/agent/releases/download/v1.0.0/Nitrix-1.0.0-mac.dmg',
-    windows: 'https://github.com/Starbird265/agent/releases/download/v1.0.0/Nitrix-1.0.0-win.exe',
-    linux: 'https://github.com/Starbird265/agent/releases/download/v1.0.0/Nitrix-1.0.0-linux.AppImage'
+    macos: 'https://github.com/Starbird265/agent/releases/latest/download/Nitrix-mac.dmg',
+    windows: 'https://github.com/Starbird265/agent/releases/latest/download/Nitrix-win.exe',
+    linux: 'https://github.com/Starbird265/agent/releases/latest/download/Nitrix-linux.AppImage'
 };
 
 // DOM Elements
