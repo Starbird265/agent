@@ -1,6 +1,6 @@
-// Supabase Configuration - UPDATE THESE WITH YOUR ACTUAL VALUES
-const SUPABASE_URL = 'https://your-project-id.supabase.co';
-const SUPABASE_ANON_KEY = 'your-anon-public-key-here';
+// Supabase Configuration
+const SUPABASE_URL = 'https://haiqtrxaxxvdwfccywrz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhaXF0cnhheHh2ZHdmY2N5d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzNDE1MzAsImV4cCI6MjA2NjkxNzUzMH0.h4Ke73y5LXCu3W0mxB1F_vhySN4dlyi3B-P7poHoOZA';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Download URLs - UPDATE THESE AFTER CREATING GITHUB RELEASE
