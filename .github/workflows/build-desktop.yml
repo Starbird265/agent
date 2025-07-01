@@ -29,13 +29,10 @@ jobs:
           cd nitrix-desktop
           npm ci
 
-      - name: Build React app first
+      - name: Prepare build assets
         run: |
-          cd ai-traineasy-mvp/packages/frontend
-          npm ci
-          npm run build
-          cd ../../../nitrix-desktop
-          cp -r ../ai-traineasy-mvp/packages/frontend/dist/assets ./assets/
+          cd nitrix-desktop
+          echo "Building Nitrix Desktop with AI Model Management..."
 
       - name: Build Electron app (macOS)
         if: matrix.os == 'macos-latest'
@@ -104,11 +101,20 @@ jobs:
             - **Windows**: `.exe` installer (64-bit)
             - **Linux**: `.AppImage` portable app
             
-            ### 🎯 Features:
-            - 🧠 **AI Training**: Create custom models with natural language
+            ### 🎯 Core Features:
+            - 🧠 **AI Model Manager**: Upload/download pre-trained TensorFlow.js models
+            - 🤗 **Hugging Face Integration**: Browse and download 100,000+ AI models
+            - 🚀 **Local AI Training**: Train custom models with your own data
             - 🔒 **Complete Privacy**: Everything runs locally on your device
-            - ⚡ **No Code Required**: Describe what you want in plain English
+            - ⚡ **No Code Required**: Point-and-click interface for AI training
             - 🎨 **Native Desktop Experience**: Optimized for each platform
+            
+            ### 🤖 AI Capabilities:
+            - **Text Classification**: Sentiment analysis, spam detection
+            - **Regression Models**: Price prediction, rating estimation
+            - **Model Import/Export**: Save and share trained models
+            - **Real-time Training**: Progress tracking with TensorFlow.js
+            - **Popular Models**: MobileNet, BERT, GPT-2, CLIP, and more
             
             ### 🔐 Access:
             This is a private beta. You need an invite code to download.

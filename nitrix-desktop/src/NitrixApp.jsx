@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import IntentCapture from './components/Nitrix/IntentCapture';
 import PipelineOrchestrator from './components/Nitrix/PipelineOrchestrator';
 import ModelDashboard from './components/Nitrix/ModelDashboard';
+import LocalModelManager from './components/LocalModelManager';
+import HuggingFaceManager from './components/HuggingFaceManager';
+import LocalTrainer from './components/LocalTrainer';
 import { localDB } from './lib/localDB';
 import './index.css';
 
@@ -286,6 +289,36 @@ console.log(result);
             >
               Active Models ({activeModels.length})
             </button>
+            <button
+              onClick={() => setCurrentView('local-models')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                currentView === 'local-models'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🧠 AI Models
+            </button>
+            <button
+              onClick={() => setCurrentView('huggingface')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                currentView === 'huggingface'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🤗 Hugging Face
+            </button>
+            <button
+              onClick={() => setCurrentView('trainer')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                currentView === 'trainer'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🚀 Train AI
+            </button>
           </div>
         </div>
       </nav>
@@ -323,6 +356,18 @@ console.log(result);
             onCreateNew={() => setCurrentView('create')}
             onRefresh={loadUserModels}
           />
+        )}
+
+        {currentView === 'local-models' && (
+          <LocalModelManager />
+        )}
+
+        {currentView === 'huggingface' && (
+          <HuggingFaceManager />
+        )}
+
+        {currentView === 'trainer' && (
+          <LocalTrainer />
         )}
       </main>
     </div>
