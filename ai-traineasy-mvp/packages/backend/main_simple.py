@@ -38,6 +38,13 @@ def require_valid_session(request: Request):
     
     return True
 
+def get_session_info(request: Request):
+    """Get session info without throwing errors"""
+    session_token = request.headers.get('X-Session-Token')
+    if session_token and invitation_manager.validate_session(session_token):
+        return session_token
+    return None
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -133,6 +140,121 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0-beta"
     }
+
+@app.get("/debug/status")
+async def debug_status():
+    """Debug endpoint to check service status"""
+    return {
+        "status": "AI TrainEasy Backend - Debug Mode",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0-beta",
+        "auth_system": "invitation-based",
+        "features": {
+            "projects": True,
+            "huggingface": True,
+            "model_training": True,
+            "file_upload": True
+        }
+    }
+
+@app.get("/debug/huggingface")
+async def debug_huggingface():
+    """Test HuggingFace connectivity"""
+    try:
+        from huggingface_hub import list_models
+        # Test basic connectivity
+        models = list(list_models(limit=5))
+        model_names = [model.modelId for model in models]
+        
+        return {
+            "status": "HuggingFace connectivity OK",
+            "sample_models": model_names,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "HuggingFace connectivity FAILED",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@app.get("/debug/projects")
+async def debug_projects():
+    """Debug projects directory"""
+    projects_dir = "projects"
+    try:
+        if not os.path.exists(projects_dir):
+            os.makedirs(projects_dir, exist_ok=True)
+            return {"status": "Projects directory created", "path": os.path.abspath(projects_dir)}
+        
+        projects = [d for d in os.listdir(projects_dir) if os.path.isdir(os.path.join(projects_dir, d))]
+        return {
+            "status": "Projects directory OK",
+            "path": os.path.abspath(projects_dir),
+            "projects_count": len(projects),
+            "projects": projects
+        }
+    except Exception as e:
+        return {
+            "status": "Projects directory ERROR",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@app.get("/models/huggingface")
+async def list_huggingface_models(limit: int = 10):
+    """List popular HuggingFace models for training"""
+    try:
+        from huggingface_hub import list_models
+        
+        # Get popular models suitable for fine-tuning
+        models_iter = list_models(
+            filter=["text-classification", "text-generation"],
+            sort="downloads",
+            direction=-1,
+            limit=limit
+        )
+        
+        models = []
+        for model in models_iter:
+            models.append({
+                "id": model.modelId,
+                "author": model.author or "Unknown",
+                "downloads": getattr(model, 'downloads', 0),
+                "tags": model.tags or [],
+                "library": getattr(model, 'library_name', 'transformers')
+            })
+        
+        return {
+            "success": True,
+            "models": models,
+            "count": len(models)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch HuggingFace models: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "models": [
+                {
+                    "id": "distilbert-base-uncased",
+                    "author": "HuggingFace",
+                    "downloads": 1000000,
+                    "tags": ["text-classification"],
+                    "library": "transformers"
+                },
+                {
+                    "id": "bert-base-uncased",
+                    "author": "HuggingFace", 
+                    "downloads": 2000000,
+                    "tags": ["text-classification"],
+                    "library": "transformers"
+                }
+            ],
+            "count": 2,
+            "note": "Fallback models - HuggingFace API unavailable"
+        }
 
 # Invitation System Endpoints
 @app.post("/auth/validate-invitation")
@@ -245,7 +367,13 @@ async def system_info(request: Request):
 
 @app.get("/projects")
 async def list_projects(request: Request):
-    require_valid_session(request)
+    """List all projects - with flexible authentication"""
+    session_token = get_session_info(request)
+    
+    if not session_token:
+        # Return helpful message if not authenticated
+        return {"projects": [], "message": "Please authenticate to view projects", "authenticated": False}
+    
     """List all projects"""
     projects_dir = "projects"
     try:
