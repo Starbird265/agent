@@ -9,3 +9,10 @@ fastapi
 uvicorn
 huggingface_hub
 python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+sqlalchemy
+alembic
+python-dotenv
+structlog
+requests

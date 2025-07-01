@@ -1,0 +1,49 @@
+services:
+  # Backend API service
+  - type: web
+    name: ai-traineasy-backend
+    runtime: python
+    buildCommand: |
+      cd packages/backend &&
+      pip install -r requirements.txt
+    startCommand: |
+      cd packages/backend &&
+      python main_simple.py
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: https://ai-traineasy-frontend.onrender.com
+
+  # Frontend web service  
+  - type: web
+    name: ai-traineasy-frontend
+    runtime: node
+    buildCommand: |
+      cd packages/frontend &&
+      npm install &&
+      npm run build
+    publishDir: packages/frontend/dist
+    staticPublishPath: ./packages/frontend/dist
+    plan: free
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: VITE_API_URL
+        value: https://ai-traineasy-backend.onrender.com
+
+# Database (if needed in future)
+# databases:
+#   - name: ai-traineasy-db
+#     databaseName: aitraineasy
+#     user: aitraineasy
