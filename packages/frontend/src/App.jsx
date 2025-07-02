@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+ import { useEffect, useState } from 'react';
 import { pingServer, createProject, fetchProjects, saveSchema, fetchSystemInfo } from './api';
 import InvitationGate from './components/InvitationGate';
 import DatasetBuilder from './components/DatasetBuilder';
