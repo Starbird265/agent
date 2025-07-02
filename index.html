@@ -1,13 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI TrainEasy MVP</title>
-    <script type="module" crossorigin src="/assets/index-D4hJSVkQ.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BiNj61Yr.css">
-  </head>
-  <body class="bg-gray-50">
-    <div id="root"></div>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nitrix - Train Smarter AI—No Cloud, No Code, Just Power</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="dist/output.css" rel="stylesheet">
+    <style>
+        /* Custom styles for landing page */
+        .transition-all { transition: all 0.3s ease; }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen">
+    <!-- Animated Background -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div class="absolute top-40 left-40 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div class="max-w-4xl mx-auto text-center">
+            
+            <!-- Logo & Header -->
+            <div class="mb-12">
+                <div class="flex items-center justify-center mb-6">
+                    <div class="w-20 h-20 bg-gradient-to-r from-purple-400 to-blue-400 rounded-xl flex items-center justify-center mr-6 shadow-2xl">
+                        <i class="fas fa-brain text-white text-3xl"></i>
+                    </div>
+                    <div class="text-left">
+                        <h1 class="text-6xl font-bold text-white mb-2">Nitrix</h1>
+                        <p class="text-xl text-purple-200 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
+                    </div>
+                </div>
+                
+                <p class="text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed">
+                    Revolutionary AI training platform that runs entirely on your device. 
+                    Create custom AI models with natural language—no technical expertise required.
+                </p>
+            </div>
+
+            <!-- Invite Code Section -->
+            <div id="inviteSection" class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <i class="fas fa-key text-yellow-400 mr-3"></i>
+                    Enter Your Invite Code
+                </h2>
+                
+                <div class="max-w-md mx-auto">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="inviteCode" 
+                            placeholder="Enter invite code..." 
+                            class="w-full px-6 py-4 bg-white/20 border border-white/30 rounded-xl text-white placeholder-gray-300 text-center text-lg font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+                            maxlength="12"
+                        >
+                        <div id="loadingSpinner" class="absolute right-4 top-4 hidden">
+                            <i class="fas fa-spinner fa-spin text-white"></i>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        id="validateBtn" 
+                        class="w-full mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-8 rounded-xl transform transition hover:scale-105 shadow-lg"
+                    >
+                        <i class="fas fa-rocket mr-2"></i>
+                        Access Nitrix
+                    </button>
+                    
+                    <div id="errorMessage" class="mt-4 text-red-300 hidden">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Section (Hidden Initially) -->
+            <div id="downloadSection" class="hidden bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+                <h2 class="text-3xl font-bold text-white mb-6">
+                    <i class="fas fa-download text-green-400 mr-3"></i>
+                    Choose Your Platform
+                </h2>
+                
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
+                    <!-- macOS -->
+                    <div class="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition cursor-pointer download-card" data-platform="macos">
+                        <div class="text-center">
+                            <i class="fab fa-apple text-4xl text-white mb-4"></i>
+                            <h3 class="text-xl font-bold text-white mb-2">macOS</h3>
+                            <p class="text-gray-300 text-sm mb-4">Compatible with macOS 11.0+</p>
+                            <div class="bg-gray-700 rounded-lg px-3 py-1 text-xs text-gray-300 mb-4">
+                                Apple Silicon & Intel
+                            </div>
+                            <button class="w-full bg-gray-800 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition">
+                                <i class="fas fa-download mr-2"></i>
+                                Download .dmg
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Windows -->
+                    <div class="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition cursor-pointer download-card" data-platform="windows">
+                        <div class="text-center">
+                            <i class="fab fa-windows text-4xl text-white mb-4"></i>
+                            <h3 class="text-xl font-bold text-white mb-2">Windows</h3>
+                            <p class="text-gray-300 text-sm mb-4">Compatible with Windows 10+</p>
+                            <div class="bg-blue-700 rounded-lg px-3 py-1 text-xs text-white mb-4">
+                                64-bit Only
+                            </div>
+                            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition">
+                                <i class="fas fa-download mr-2"></i>
+                                Download .exe
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Linux -->
+                    <div class="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition cursor-pointer download-card" data-platform="linux">
+                        <div class="text-center">
+                            <i class="fab fa-linux text-4xl text-white mb-4"></i>
+                            <h3 class="text-xl font-bold text-white mb-2">Linux</h3>
+                            <p class="text-gray-300 text-sm mb-4">Ubuntu 18.04+ & derivatives</p>
+                            <div class="bg-orange-600 rounded-lg px-3 py-1 text-xs text-white mb-4">
+                                AppImage
+                            </div>
+                            <button class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition">
+                                <i class="fas fa-download mr-2"></i>
+                                Download .AppImage
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Preview -->
+                <div class="grid md:grid-cols-3 gap-4 text-center">
+                    <div class="text-purple-200">
+                        <i class="fas fa-shield-alt text-2xl mb-2"></i>
+                        <p class="text-sm">100% Privacy</p>
+                    </div>
+                    <div class="text-blue-200">
+                        <i class="fas fa-bolt text-2xl mb-2"></i>
+                        <p class="text-sm">Lightning Fast</p>
+                    </div>
+                    <div class="text-green-200">
+                        <i class="fas fa-magic text-2xl mb-2"></i>
+                        <p class="text-sm">No Code Required</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="grid md:grid-cols-3 gap-8 mt-12">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-brain text-purple-400 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">AI That Learns</h3>
+                    <p class="text-gray-300">Train custom models with your data using advanced machine learning</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-lock text-blue-400 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Complete Privacy</h3>
+                    <p class="text-gray-300">Everything runs locally - your data never leaves your device</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-comments text-green-400 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Natural Language</h3>
+                    <p class="text-gray-300">Describe what you want in plain English - no coding required</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+    
+        mobileMenuButton.addEventListener('click', () => {
+            const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
+            mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
+            mobileMenu.classList.toggle('hidden');
+            mobileMenuButton.querySelector('i').classList.toggle('fa-bars');
+            mobileMenuButton.querySelector('i').classList.toggle('fa-times');
+        });
+    });
+    </script>
+
+    <!-- Main script -->
+    <script src="script.js"></script>
+</body>
 </html>
