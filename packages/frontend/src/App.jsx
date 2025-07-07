@@ -448,7 +448,13 @@ export default function App() {
                   <h4 className="text-lg font-medium text-gray-900">Upload Dataset</h4>
                 </div>
                 <div className="ml-11">
-                  <DatasetBuilder project={project} onDataLoaded={setDataset} />
+                  <DatasetBuilder project={project} onDataLoaded={(data, csvText) => {
+                    setDataset(data);
+                    // Store CSV data for real ML training
+                    if (csvText) {
+                      localStorage.setItem(`csvData_${project.id}`, csvText);
+                    }
+                  }} />
                 </div>
               </div>
 

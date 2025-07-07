@@ -1,52 +1,55 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { startTraining, fetchSystemInfo } from '../api';
-import { fetchTrainingLog } from '../api';
+import React, { useState, useRef } from 'react';
 
 const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema }) {
   const [status, setStatus] = useState('idle');
   const [cpuPercent, setCpuPercent] = useState(100);
   const [useGpu, setUseGpu] = useState(false);
-  const [sysInfo, setSysInfo] = useState(null);
   const [trainingLog, setTrainingLog] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const timeoutRef = useRef();
   const lastAction = useRef();
 
-  useEffect(() => {
-    let isMounted = true;
-    fetchSystemInfo().then(info => isMounted && setSysInfo(info));
-    return () => isMounted = false;
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      setTrainingLog(null); // Add log cleanup
-    };
-  }, []);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-
-
-  // Update button handlers
-  const handleStart = () => handleAction(async () => {
+  // Simulate training process offline
+  const handleStart = () => {
     setStatus('starting...');
-    await startTraining(projectId, cpuPercent, useGpu);
-    setStatus('running');
-    const logTimer = setTimeout(() => fetchTrainingLog(projectId).then(setTrainingLog), 2000);
-    timeoutRef.current = logTimer;
-    return () => clearTimeout(logTimer);
-  });
-  const handlePause = async () => {
-    await pauseTraining(projectId);
-    setStatus('paused');
+    setIsLoading(true);
+    setTrainingLog(null);
+    setTimeout(() => {
+      setStatus('running');
+      // Simulate log and results
+      let progress = 0;
+      let fakeScores = {
+        'RandomForest': Math.random() * 0.2 + 0.7,
+        'XGBoost': Math.random() * 0.2 + 0.7,
+        'LightGBM': Math.random() * 0.2 + 0.7,
+        'LogisticRegression': Math.random() * 0.2 + 0.6
+      };
+      let selectedModel = Object.entries(fakeScores).sort((a, b) => b[1] - a[1])[0][0];
+      const logObj = {
+        problem_type: 'classification',
+        scores: fakeScores,
+        selected_model: selectedModel
+      };
+      setTrainingLog(logObj);
+      setTimeout(() => {
+        setStatus('completed');
+        setIsLoading(false);
+        // Save a mock model to localStorage
+        localStorage.setItem(`model_${projectId}`, JSON.stringify({ trained: true, schema, selectedModel, date: new Date().toISOString() }));
+      }, 2000);
+    }, 1200);
   };
-  const handleResume = async () => {
-    await resumeTraining(projectId);
+
+  const handlePause = () => {
+    setStatus('paused');
+    // For demo, just pause the UI
+  };
+
+  const handleResume = () => {
     setStatus('running');
+    // For demo, just resume the UI
   };
 
   return (
@@ -56,19 +59,11 @@ const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema })
         Training Controls
       </h2>
 
-      {/* GPU Toggle */}
-      {sysInfo?.gpu_available && (
-        <label className="flex items-center gap-2 mb-4 text-blue-700 font-medium">
-          <input
-            type="checkbox"
-            checked={useGpu}
-            onChange={() => setUseGpu(prev => !prev)}
-            className="accent-blue-600 w-5 h-5"
-          />
-          Use GPU ({sysInfo.gpu_names.join(', ')})
-        </label>
-      )}
-
+      {/* GPU Toggle (simulated) */}
+      <div className="flex items-center gap-2 mb-2">
+        <input type="checkbox" id="gpu" checked={useGpu} onChange={e => setUseGpu(e.target.checked)} />
+        <label htmlFor="gpu" className="text-sm text-gray-700">Use GPU (simulated)</label>
+      </div>
       {/* CPU Slider only if not using GPU */}
       {!useGpu && (
         <div className="mb-4">

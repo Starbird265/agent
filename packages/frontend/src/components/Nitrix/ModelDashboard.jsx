@@ -1,4 +1,10 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import RealModelPredictor from './RealModelPredictor';
+import { localDB } from '../../lib/localDB';
+import ModernCard from '../UI/ModernCard';
+import ModernButton from '../UI/ModernButton';
+import ProgressBar from '../UI/ProgressBar';
 
 /**
  * Nitrix Model Dashboard
@@ -8,6 +14,8 @@ import React, { useState } from 'react';
 const ModelDashboard = ({ activeModels, trainingQueue, showOnlyActive = false, onCreateNew, onRefresh }) => {
   const [selectedModel, setSelectedModel] = useState(null);
   const [showSDK, setShowSDK] = useState(false);
+  const [showPredictor, setShowPredictor] = useState(false);
+  const [predictorModel, setPredictorModel] = useState(null);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -77,6 +85,18 @@ const result = await client.predict('${model.id}', {
 });
 
 console.log(result);`;
+  };
+
+  const handleTestModel = async (model) => {
+    if (model.realModel && model.modelId) {
+      // Load real model metadata
+      const modelMetadata = await localDB.getModel(model.modelId);
+      setPredictorModel({ ...model, metadata: modelMetadata });
+      setShowPredictor(true);
+    } else {
+      // For non-real models, show a message
+      alert('This model was trained with simulation. Real prediction is only available for models trained with the Real ML Engine.');
+    }
   };
 
   const displayModels = showOnlyActive ? activeModels.filter(m => m.status === 'deployed') : activeModels;
@@ -204,6 +224,7 @@ console.log(result);`;
               key={model.id}
               model={model}
               onSelect={() => setSelectedModel(model)}
+              onTestModel={() => handleTestModel(model)}
               getStatusColor={getStatusColor}
               getUseCaseIcon={getUseCaseIcon}
               formatDate={formatDate}
@@ -235,25 +256,59 @@ console.log(result);`;
           generateJavaScriptExample={generateJavaScriptExample}
         />
       )}
+
+      {/* Real Model Predictor */}
+      {showPredictor && predictorModel && (
+        <RealModelPredictor
+          modelId={predictorModel.modelId}
+          modelMetadata={predictorModel.metadata}
+          onClose={() => {
+            setShowPredictor(false);
+            setPredictorModel(null);
+          }}
+        />
+      )}
     </div>
   );
 };
 
 // Model Card Component
-const ModelCard = ({ model, onSelect, getStatusColor, getUseCaseIcon, formatDate }) => {
+const ModelCard = ({ model, onSelect, onTestModel, getStatusColor, getUseCaseIcon, formatDate }) => {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+    <ModernCard 
+      className="p-6 cursor-pointer" 
+      hover={true}
+      glow={model.realModel}
+      onClick={() => onSelect()}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <div className="text-2xl">{getUseCaseIcon(model.useCase)}</div>
+          <motion.div 
+            className="text-3xl bg-gradient-to-br from-blue-100 to-purple-100 p-3 rounded-xl"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            {getUseCaseIcon(model.useCase)}
+          </motion.div>
           <div>
-            <h3 className="text-lg font-medium text-gray-900 truncate">{model.name}</h3>
-            <p className="text-sm text-gray-500 capitalize">{model.useCase?.replace('-', ' ')}</p>
+            <h3 className="font-bold text-lg text-gray-900 mb-1">{model.name}</h3>
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-gray-600 capitalize">{model.useCase?.replace('-', ' ')}</p>
+              {model.realModel && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+                  Real AI
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(model.status)}`}>
+        <motion.span 
+          className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(model.status)}`}
+          whileHover={{ scale: 1.05 }}
+        >
           {model.status}
-        </span>
+        </motion.span>
       </div>
 
       <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -283,16 +338,23 @@ const ModelCard = ({ model, onSelect, getStatusColor, getUseCaseIcon, formatDate
 
       {model.status === 'training' && (
         <div className="mb-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">Training Progress</span>
-            <span className="font-medium">{model.progress || 0}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${model.progress || 0}%` }}
-            ></div>
-          </div>
+          <ProgressBar 
+            progress={model.progress || 0}
+            label={model.currentStage || 'Training'}
+            color="purple"
+            animated={true}
+          />
+          {model.trainingMetrics && (
+            <div className="mt-2 text-xs text-gray-600">
+              <span>Epoch {model.trainingMetrics.epoch}/{model.trainingMetrics.totalEpochs}</span>
+              {model.trainingMetrics.loss && (
+                <span className="ml-3">Loss: {model.trainingMetrics.loss.toFixed(4)}</span>
+              )}
+              {model.trainingMetrics.accuracy && (
+                <span className="ml-3">Acc: {(model.trainingMetrics.accuracy * 100).toFixed(1)}%</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -300,14 +362,33 @@ const ModelCard = ({ model, onSelect, getStatusColor, getUseCaseIcon, formatDate
         <div className="text-xs text-gray-500">
           {model.status === 'deployed' ? 'Deployed' : 'Created'} {formatDate(model.completedAt || model.created)}
         </div>
-        <button
-          onClick={onSelect}
-          className="px-3 py-1 text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
-        >
-          {model.status === 'deployed' ? 'Use Model →' : 'View →'}
-        </button>
+        <div className="flex space-x-2">
+          {model.status === 'deployed' && model.realModel && (
+            <ModernButton
+              variant="success"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTestModel();
+              }}
+              icon="🎯"
+            >
+              Test
+            </ModernButton>
+          )}
+          <ModernButton
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+          >
+            {model.status === 'deployed' ? 'Use Model →' : 'View →'}
+          </ModernButton>
+        </div>
       </div>
-    </div>
+    </ModernCard>
   );
 };
 

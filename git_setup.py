@@ -44,14 +44,85 @@ class GitSetup:
             return False
     
     def create_gitignore(self):
-        """Ensure .gitignore exists"""
+        """Ensure .gitignore exists, or create a sensible default for Python/Node projects"""
         gitignore_path = self.repo_path / '.gitignore'
         if gitignore_path.exists():
             print("✅ .gitignore already exists")
             return True
-        
-        print("⚠️  .gitignore not found, but it should have been created earlier")
-        return True
+
+        print("⚠️  .gitignore not found. Creating a recommended .gitignore for Python, Node, and common tools...")
+        default_gitignore = '''# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+.env.*
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+.nox/
+*.log
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.parcel-cache/
+.next/
+.vercel/
+.turbo/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# OS junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Others
+.idea/
+.history/
+.swp
+.swo
+.swn
+*.bak
+*.tmp
+*.orig
+*.rej
+*.sublime-workspace
+*.sublime-project
+'''
+        try:
+            with open(gitignore_path, 'w') as f:
+                f.write(default_gitignore)
+            print("✅ .gitignore created with recommended ignores")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to create .gitignore: {e}")
+            return False
     
     def stage_files(self):
         """Stage files for commit"""

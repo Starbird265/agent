@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import IntentCapture from './components/Nitrix/IntentCapture';
 import PipelineOrchestrator from './components/Nitrix/PipelineOrchestrator';
 import ModelDashboard from './components/Nitrix/ModelDashboard';
 import { localDB } from './lib/localDB';
+import { realMLEngine } from './lib/realMLEngine';
+import ModernButton from './components/UI/ModernButton';
 import './index.css';
 
 /**
@@ -118,9 +121,8 @@ function NitrixApp() {
   };
 
   const startAutomatedTraining = async (pipeline) => {
-    // Simulate the automated pipeline orchestration
-    // In reality, this would trigger the backend orchestrator
-    console.log('🚀 Starting automated training for:', pipeline.userIntent);
+    // REAL ML TRAINING - No more simulation!
+    console.log('🚀 Starting REAL automated training for:', pipeline.userIntent);
     
     // Update pipeline status
     await localDB.updateProject(pipeline.id, {
@@ -128,45 +130,129 @@ function NitrixApp() {
       startedAt: new Date().toISOString()
     });
 
-    // This would typically trigger the backend pipeline
-    // For demo purposes, we'll simulate the process
-    simulateAutomatedPipeline(pipeline);
+    // Start real ML training pipeline
+    await executeRealMLPipeline(pipeline);
   };
 
-  const simulateAutomatedPipeline = async (pipeline) => {
-    // Simulate pipeline stages
-    const stages = [
-      { name: 'Data Ingestion', duration: 2000 },
-      { name: 'Preprocessing', duration: 3000 },
-      { name: 'Model Selection', duration: 1000 },
-      { name: 'Training', duration: 10000 },
-      { name: 'Evaluation', duration: 2000 },
-      { name: 'Deployment', duration: 3000 }
-    ];
-
-    for (const stage of stages) {
-      await new Promise(resolve => setTimeout(resolve, stage.duration));
-      console.log(`✅ ${stage.name} completed`);
-      
-      // Update progress in real-time
+  const executeRealMLPipeline = async (pipeline) => {
+    try {
+      // Stage 1: Data Ingestion
       await localDB.updateProject(pipeline.id, {
-        currentStage: stage.name,
-        progress: ((stages.indexOf(stage) + 1) / stages.length) * 100
+        currentStage: 'Data Ingestion',
+        progress: 10
       });
+      await loadUserModels();
+
+      // Get the project data
+      const project = await localDB.getProject(pipeline.id);
+      if (!project.files || project.files.length === 0) {
+        throw new Error('No training data found');
+      }
+
+      // Stage 2: Dataset Preprocessing
+      await localDB.updateProject(pipeline.id, {
+        currentStage: 'Dataset Analysis',
+        progress: 25
+      });
+      await loadUserModels();
+
+      // Load and preprocess the dataset
+      const csvText = localStorage.getItem(`csvData_${pipeline.id}`);
+      if (!csvText) {
+        throw new Error('No CSV data found for this project');
+      }
       
-      // Refresh the models list
+      // Determine target column (for now, assume last column)
+      const lines = csvText.split('\n');
+      const headers = lines[0].split(',');
+      const targetColumn = headers[headers.length - 1];
+
+      console.log('🔍 Preprocessing dataset with target:', targetColumn);
+
+      // Stage 3: Real ML Analysis
+      await localDB.updateProject(pipeline.id, {
+        currentStage: 'Model Training',
+        progress: 40
+      });
+      await loadUserModels();
+
+      // Analyze dataset with real ML
+      const dataInfo = await realMLEngine.preprocessDataset(csvText, targetColumn);
+      console.log('📊 Dataset analysis complete:', dataInfo);
+
+      // Stage 4: Real Model Training
+      const progressCallback = async (trainingProgress) => {
+        await localDB.updateProject(pipeline.id, {
+          currentStage: `Training (Epoch ${trainingProgress.metrics.epoch}/${trainingProgress.metrics.totalEpochs})`,
+          progress: 50 + (trainingProgress.progress * 0.4), // 50-90% for training
+          trainingMetrics: trainingProgress.metrics
+        });
+        await loadUserModels();
+      };
+
+      console.log('🧠 Starting real neural network training...');
+      const trainingResult = await realMLEngine.trainModel(dataInfo, progressCallback);
+
+      // Stage 5: Model Evaluation
+      await localDB.updateProject(pipeline.id, {
+        currentStage: 'Model Evaluation',
+        progress: 92
+      });
+      await loadUserModels();
+
+      // Get model metrics
+      const modelMetrics = realMLEngine.getModelMetrics();
+      console.log('📈 Model training complete:', modelMetrics);
+
+      // Stage 6: Model Deployment
+      await localDB.updateProject(pipeline.id, {
+        currentStage: 'Model Deployment',
+        progress: 95
+      });
+      await loadUserModels();
+
+      // Save the trained model
+      const modelId = `model_${pipeline.id}`;
+      const modelMetadata = {
+        projectId: pipeline.id,
+        name: project.name,
+        type: dataInfo.problemType,
+        accuracy: modelMetrics.finalValAccuracy,
+        loss: modelMetrics.finalValLoss,
+        features: dataInfo.features,
+        target: dataInfo.target,
+        dataInfo: dataInfo,
+        trainingResult: trainingResult
+      };
+
+      await realMLEngine.saveModel(modelId, modelMetadata);
+
+      // Mark as completed and deployed
+      await localDB.updateProject(pipeline.id, {
+        status: 'deployed',
+        completedAt: new Date().toISOString(),
+        progress: 100,
+        modelId: modelId,
+        modelMetrics: modelMetrics,
+        apiEndpoint: `local://models/${modelId}`,
+        realModel: true, // Flag to indicate this is a real trained model
+        sdkSnippet: generateRealSDKSnippet(pipeline, modelId)
+      });
+
+      console.log('✅ Real ML training pipeline completed successfully!');
+      await loadUserModels();
+
+    } catch (error) {
+      console.error('❌ Real ML training failed:', error);
+      
+      // Mark as failed
+      await localDB.updateProject(pipeline.id, {
+        status: 'failed',
+        error: error.message,
+        failedAt: new Date().toISOString()
+      });
       await loadUserModels();
     }
-
-    // Mark as completed and deployed
-    await localDB.updateProject(pipeline.id, {
-      status: 'deployed',
-      completedAt: new Date().toISOString(),
-      apiEndpoint: `https://api.nitrix.ai/models/${pipeline.id}`,
-      sdkSnippet: generateSDKSnippet(pipeline)
-    });
-
-    await loadUserModels();
   };
 
   const generateSDKSnippet = (pipeline) => {
@@ -182,6 +268,28 @@ const result = await client.predict({
 });
 
 console.log(result);
+`;
+  };
+
+  const generateRealSDKSnippet = (pipeline, modelId) => {
+    return `
+// Nitrix Real ML SDK - Trained Model Ready!
+import { realMLEngine } from './lib/realMLEngine';
+import { localDB } from './lib/localDB';
+
+// Load your trained model
+const modelMetadata = await localDB.getModel('${modelId}');
+await realMLEngine.loadModel('${modelId}');
+
+// Make real predictions
+const prediction = await realMLEngine.predict({
+  // Your input features here
+  feature1: 'value1',
+  feature2: 'value2'
+}, modelMetadata);
+
+console.log('Real prediction:', prediction);
+// Output: { type: 'classification', predictedClass: 0, confidence: 85, probabilities: [85, 15] }
 `;
   };
 
@@ -202,90 +310,114 @@ console.log(result);
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/20 to-purple-50/20">
+      {/* Enhanced Header */}
+      <motion.header 
+        className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-gray-200/50 sticky top-0 z-50"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="flex items-center gap-3">
+            <motion.div 
+              className="flex items-center"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="flex items-center gap-4">
                 <div className="relative">
-                  <svg width="40" height="40" fill="none" viewBox="0 0 40 40" className="drop-shadow-sm">
-                    <circle cx="20" cy="20" r="20" fill="url(#nitrixGradient)" />
-                    <path d="M12 14l8 12 8-12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="20" cy="20" r="3" fill="#fff" />
+                  <motion.svg 
+                    width="48" 
+                    height="48" 
+                    fill="none" 
+                    viewBox="0 0 48 48" 
+                    className="drop-shadow-lg"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  >
+                    <circle cx="24" cy="24" r="24" fill="url(#nitrixGradient)" />
+                    <path d="M15 18l9 12 9-12" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="24" cy="24" r="4" fill="#fff" />
                     <defs>
-                      <linearGradient id="nitrixGradient" x1="0" y1="0" x2="40" y2="40">
+                      <linearGradient id="nitrixGradient" x1="0" y1="0" x2="48" y2="48">
                         <stop offset="0%" stopColor="#8B5CF6" />
-                        <stop offset="100%" stopColor="#3B82F6" />
+                        <stop offset="50%" stopColor="#3B82F6" />
+                        <stop offset="100%" stopColor="#10B981" />
                       </linearGradient>
                     </defs>
-                  </svg>
+                  </motion.svg>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Nitrix</h1>
-                  <p className="text-sm text-gray-500 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Nitrix
+                  </h1>
+                  <p className="text-sm text-gray-600 font-medium">Train Smarter AI—No Cloud, No Code, Just Power</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                <motion.div 
+                  className="w-2 h-2 rounded-full bg-green-400"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
                 <span className="text-sm font-medium text-gray-700">Service Active</span>
               </div>
-              <div className="text-sm text-gray-500">
-                Welcome, {user.name}
+              <div className="text-sm text-gray-600">
+                Welcome, <span className="font-semibold text-purple-600">{user.name}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-medium">
+                  {activeModels.length} Models
+                </span>
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                  {trainingQueue.length} Training
+                </span>
               </div>
             </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button
+          <div className="flex space-x-2 py-4">
+            <ModernButton
+              variant={currentView === 'dashboard' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setCurrentView('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                currentView === 'dashboard'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              icon="📊"
             >
               Dashboard
-            </button>
-            <button
+            </ModernButton>
+            <ModernButton
+              variant={currentView === 'create' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setCurrentView('create')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                currentView === 'create'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              icon="✨"
             >
               Create Model
-            </button>
-            <button
+            </ModernButton>
+            <ModernButton
+              variant={currentView === 'orchestrator' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setCurrentView('orchestrator')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                currentView === 'orchestrator'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              icon="⚙️"
             >
               Training Queue ({trainingQueue.length})
-            </button>
-            <button
+            </ModernButton>
+            <ModernButton
+              variant={currentView === 'models' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setCurrentView('models')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                currentView === 'models'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              icon="🤖"
             >
               Active Models ({activeModels.length})
-            </button>
+            </ModernButton>
           </div>
         </div>
       </nav>

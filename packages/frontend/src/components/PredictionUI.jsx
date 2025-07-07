@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { predict } from '../api';
 
 export default function PredictionUI({ projectId, schema }) {
   const [form, setForm] = useState(
@@ -11,13 +10,20 @@ export default function PredictionUI({ projectId, schema }) {
     setForm(prev => ({ ...prev, [col]: val }));
   };
 
-  const handlePredict = async () => {
-    try {
-      const { predictions } = await predict(projectId, form);
-      setResult(predictions);
-    } catch (e) {
-      alert(e.message);
+  const handlePredict = () => {
+    // Simulate prediction using the mock model from localStorage
+    const model = JSON.parse(localStorage.getItem(`model_${projectId}`) || '{}');
+    if (!model.trained) {
+      setResult({ error: 'No trained model found. Please train a model first.' });
+      return;
     }
+    // For demo, just echo the input and selected model
+    setResult({
+      input: { ...form },
+      model: model.selectedModel || 'DemoModel',
+      prediction: 'DemoResult',
+      info: 'This is a simulated prediction. Replace with real logic for production.'
+    });
   };
 
   return (

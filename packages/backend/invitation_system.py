@@ -51,7 +51,7 @@ class InvitationManager:
     def create_default_codes(self):
         """Create default invitation codes for beta access"""
         default_codes = [
-            "BETA-2024-EARLY",
+            "BETA-2025-EARLY",
             "AUTOML-PREVIEW", 
             "AI-TRAIN-DEMO",
             "ML-BETA-ACCESS",
