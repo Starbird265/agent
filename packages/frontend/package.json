@@ -51,6 +51,7 @@
     "@tensorflow/tfjs-vis": "^1.5.1",
     "chart.js": "^4.4.1",
     "clsx": "^2.0.0",
+    "crypto-js": "^4.2.0",
     "csv-parse": "^5.5.2",
     "date-fns": "^3.0.6",
     "dexie": "^3.2.4",

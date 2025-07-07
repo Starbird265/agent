@@ -47,12 +47,6 @@ const RealModelPredictor = ({ modelId, modelMetadata, onClose }) => {
       setError('Failed to load model: ' + error.message);
     }
   };
-      console.log('✅ Model loaded successfully');
-    } catch (error) {
-      console.error('❌ Failed to load model:', error);
-      setError('Failed to load model: ' + error.message);
-    }
-  };
 
   const handleInputChange = (feature, value) => {
     setInputData(prev => ({

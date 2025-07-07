@@ -51,70 +51,7 @@ class GitSetup:
             return True
 
         print("⚠️  .gitignore not found. Creating a recommended .gitignore for Python, Node, and common tools...")
-        default_gitignore = '''# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.env
-.env.*
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage.xml
-*.cover
-.hypothesis/
-.tox/
-.nox/
-*.log
-
-# Node
-node_modules/
-dist/
-build/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.parcel-cache/
-.next/
-.vercel/
-.turbo/
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# macOS
-.DS_Store
-
-# VSCode
-.vscode/
-
-# OS junk
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Others
-.idea/
-.history/
-.swp
-.swo
-.swn
-*.bak
-*.tmp
-*.orig
-*.rej
-*.sublime-workspace
-*.sublime-project
-'''
+        default_gitignore = '''# Python\n# Byte-compiled / optimized / DLL files\n__pycache__/\n*.py[cod]\n*.pyo\n*.pyd\n*.so\n.Python\n\n# Virtual environments\nenv/\nvenv/\nENV/\n.env/\n.venv/\nenv.bak/\nvenv.bak/\n\n# Python environment variables and settings\n.env\n.env.*\n*.env\n*.env.*\n\n# Python test and coverage\n.mypy_cache/\n.pytest_cache/\n.coverage\ncoverage.xml\n*.cover\n.hypothesis/\n.tox/\n.nox/\n\n# Jupyter Notebook\n.ipynb_checkpoints/\n*.ipynb\n\n# PyInstaller\nbuild/\ndist/\n*.spec\n\n# Node\nnode_modules/\ndist/\nbuild/\n.nyc_output/\ncoverage/\n*.log\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*\npnpm-debug.log*\n.parcel-cache/\n.next/\n.vercel/\n.turbo/\n\n# Environment files\n.env.local\n.env.development.local\n.env.test.local\n.env.production.local\n\n# macOS\n.DS_Store\n.AppleDouble\n.LSOverride\n\n# Windows\nThumbs.db\nehthumbs.db\nDesktop.ini\n$RECYCLE.BIN/\n\n# Linux\n*~\n.nfs*\n\n# VSCode\n.vscode/\n.history/\n\n# JetBrains IDEs\n.idea/\n*.iml\n\n# Sublime\n*.sublime-workspace\n*.sublime-project\n\n# Vim\n*.swp\n*.swo\n*.swn\n\n# Miscellaneous\n*.bak\n*.tmp\n*.orig\n*.rej\n*.log\n*.pid\n*.seed\n*.pid.lock\n\n# Lock files\npackage-lock.json\nyarn.lock\npnpm-lock.yaml\n\n# Others\n*.orig\n*.rej\n\n# Project-specific\n# Add any additional project-specific ignores below\n'''
         try:
             with open(gitignore_path, 'w') as f:
                 f.write(default_gitignore)

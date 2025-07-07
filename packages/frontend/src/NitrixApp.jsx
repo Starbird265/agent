@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import IntentCapture from './components/Nitrix/IntentCapture';
 import PipelineOrchestrator from './components/Nitrix/PipelineOrchestrator';
 import ModelDashboard from './components/Nitrix/ModelDashboard';
+import EnhancedFeatures from './components/EnhancedFeatures';
 import { localDB } from './lib/localDB';
 import { realMLEngine } from './lib/realMLEngine';
 import ModernButton from './components/UI/ModernButton';
@@ -418,6 +419,14 @@ console.log('Real prediction:', prediction);
             >
               Active Models ({activeModels.length})
             </ModernButton>
+            <ModernButton
+              variant={currentView === 'features' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('features')}
+              icon="⚡"
+            >
+              Enhanced Features
+            </ModernButton>
           </div>
         </div>
       </nav>
@@ -455,6 +464,10 @@ console.log('Real prediction:', prediction);
             onCreateNew={() => setCurrentView('create')}
             onRefresh={loadUserModels}
           />
+        )}
+        
+        {currentView === 'features' && (
+          <EnhancedFeatures />
         )}
       </main>
     </div>
