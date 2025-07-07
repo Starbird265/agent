@@ -57,7 +57,7 @@
     "dexie": "^3.2.4",
     "framer-motion": "^10.18.0",
     "lodash": "^4.17.21",
-    "papaparse": "^5.4.1",
+    "papaparse": "^5.5.3",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^19.1.0",
@@ -68,7 +68,8 @@
     "react-router-dom": "^6.21.0",
     "react-use": "^17.4.0",
     "recharts": "^2.9.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",

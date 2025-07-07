@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import ModernCard from '../UI/ModernCard';
 import ModernButton from '../UI/ModernButton';
+import PretrainedModelsBrowser from './PretrainedModelsBrowser';
 
 /**
  * Nitrix Intent Capture Component
@@ -35,6 +36,7 @@ const IntentCapture = ({ onIntentSubmit, onCancel, initialData = {}, disabled = 
   });
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('create'); // 'create' or 'pretrained'
 
   const useCases = [
     {
@@ -131,6 +133,28 @@ const IntentCapture = ({ onIntentSubmit, onCancel, initialData = {}, disabled = 
     }
   };
 
+  const handlePretrainedModelSelect = async (modelData) => {
+    setLoading(true);
+    
+    const intentData = {
+      type: 'pretrained',
+      name: modelData.name,
+      description: modelData.description,
+      useCase: modelData.useCase,
+      pretrainedModel: modelData.model,
+      skipTraining: true
+    };
+
+    try {
+      await onIntentSubmit(intentData);
+    } catch (error) {
+      console.error('Failed to load pretrained model:', error);
+      alert('Failed to load the pretrained model. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateModelName = (intent, useCase) => {
     const words = intent.split(' ').filter(word => word.length > 3);
     const mainWords = words.slice(0, 3).join(' ');
@@ -154,6 +178,16 @@ const IntentCapture = ({ onIntentSubmit, onCancel, initialData = {}, disabled = 
     return suggestions;
   };
 
+  // Show pretrained models browser
+  if (viewMode === 'pretrained') {
+    return (
+      <PretrainedModelsBrowser
+        onModelSelect={handlePretrainedModelSelect}
+        onCancel={() => setViewMode('create')}
+      />
+    );
+  }
+
   return (
     <motion.div 
       className="max-w-4xl mx-auto"
@@ -161,6 +195,45 @@ const IntentCapture = ({ onIntentSubmit, onCancel, initialData = {}, disabled = 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
     >
+      {/* Model Type Selection */}
+      <ModernCard className="mb-8 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Choose Your Approach</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div 
+            className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+              viewMode === 'create' 
+                ? 'border-purple-500 bg-purple-50' 
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+            onClick={() => setViewMode('create')}
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">🎯</div>
+              <div>
+                <h3 className="font-semibold">Train Custom Model</h3>
+                <p className="text-sm text-gray-600">Build your own AI from scratch</p>
+              </div>
+            </div>
+          </div>
+          <div 
+            className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+              viewMode === 'pretrained' 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+            onClick={() => setViewMode('pretrained')}
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">🤖</div>
+              <div>
+                <h3 className="font-semibold">Use Pre-trained Model</h3>
+                <p className="text-sm text-gray-600">Ready-to-use AI models</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ModernCard>
+
       {/* Enhanced Progress Bar */}
       <ModernCard className="mb-8 p-6">
         <div className="flex items-center justify-between mb-4">

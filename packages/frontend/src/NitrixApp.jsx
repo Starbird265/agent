@@ -51,11 +51,16 @@ function NitrixApp() {
 
   const handleNewIntent = async (intentData) => {
     try {
-      // Transform user intent into a training pipeline
-      const pipeline = await createPipelineFromIntent(intentData);
-      
-      // Start the automated training process
-      await startAutomatedTraining(pipeline);
+      // Check if this is a pretrained model
+      if (intentData.type === 'pretrained') {
+        await handlePretrainedModelSetup(intentData);
+      } else {
+        // Transform user intent into a training pipeline
+        const pipeline = await createPipelineFromIntent(intentData);
+        
+        // Start the automated training process
+        await startAutomatedTraining(pipeline);
+      }
       
       // Refresh the dashboard
       await loadUserModels();
@@ -65,6 +70,29 @@ function NitrixApp() {
     } catch (error) {
       console.error('Failed to process intent:', error);
     }
+  };
+
+  const handlePretrainedModelSetup = async (intentData) => {
+    // Create a project for the pretrained model
+    const project = {
+      id: `pretrained_${Date.now()}`,
+      name: intentData.name,
+      description: intentData.description,
+      type: 'pretrained',
+      useCase: intentData.useCase,
+      status: 'ready',
+      accuracy: intentData.pretrainedModel.metadata.accuracy,
+      created: new Date().toISOString(),
+      model: intentData.pretrainedModel
+    };
+
+    // Save the pretrained model project
+    await localDB.createProject(project);
+    
+    // Add to active models
+    setActiveModels(prev => [...prev, project]);
+    
+    console.log('✅ Pretrained model setup complete:', project.name);
   };
 
   const createPipelineFromIntent = async (intent) => {
