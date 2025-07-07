@@ -14,7 +14,12 @@ export default function DatasetBuilder({ project, onDataLoaded }) {
     try {
       localStorage.setItem(`dataset_${projectId}`, JSON.stringify(data));
     } catch (e) {
-      alert('Failed to save dataset locally.');
+      if (e.name === 'QuotaExceededError') {
+        alert('Storage quota exceeded. Please clear some browser data or use a smaller dataset.');
+      } else {
+        console.error('Failed to save dataset:', e);
+        alert('Failed to save dataset locally: ' + e.message);
+      }
     }
   };
 
@@ -26,10 +31,16 @@ export default function DatasetBuilder({ project, onDataLoaded }) {
     if (file.name.endsWith('.json')) {
       data = JSON.parse(text);
     } else {
-      // CSV parsing
-      const rows = text.trim().split(/\r?\n/);
-      const headers = rows.shift().split(',');
-      data = rows.map(row => headers.reduce((o, h, i) => ({ ...o, [h]: row.split(',')[i] }), {}));
+      // CSV parsing with better handling of quoted fields
+      const lines = text.trim().split(/\r?\n/);
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      data = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        return headers.reduce((obj, header, index) => {
+          obj[header] = values[index] || '';
+          return obj;
+        }, {});
+      });
     }
     setPreview(data.slice(0, 5));
     saveDatasetOffline(project.id, data);

@@ -8,12 +8,21 @@ echo "✨ Enhanced UI with modern design and real AI functionality"
 echo ""
 
 # Navigate to frontend directory
-cd packages/frontend
+if [ ! -d "packages/frontend" ]; then
+  echo "❌ Error: packages/frontend directory not found"
+  echo "Please run this script from the project root directory"
+  exit 1
+fi
+
+cd packages/frontend || exit 1
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
-    npm install
+    if ! npm install; then
+        echo "❌ Failed to install dependencies"
+        exit 1
+    fi
 fi
 
 # Start the development server
@@ -35,4 +44,8 @@ echo "Press Ctrl+C to stop the server"
 echo "================================"
 
 # Start the server
-npm run dev
+if ! npm run dev; then
+  echo "❌ Failed to start development server"
+  echo "Please check the error messages above and try again"
+  exit 1
+fi

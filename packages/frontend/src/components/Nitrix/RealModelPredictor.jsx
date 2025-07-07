@@ -24,7 +24,13 @@ const RealModelPredictor = ({ modelId, modelMetadata, onClose }) => {
   const loadModel = async () => {
     try {
       console.log('📥 Loading trained model for prediction...');
-      await realMLEngine.loadModel(modelId);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Model loading timeout')), 30000)
+      );
+      await Promise.race([
+        realMLEngine.loadModel(modelId),
+        timeoutPromise
+      ]);
       setModelLoaded(true);
       
       // Initialize input data structure
@@ -35,6 +41,12 @@ const RealModelPredictor = ({ modelId, modelMetadata, onClose }) => {
       });
       setInputData(initialData);
       
+      console.log('✅ Model loaded successfully');
+    } catch (error) {
+      console.error('❌ Failed to load model:', error);
+      setError('Failed to load model: ' + error.message);
+    }
+  };
       console.log('✅ Model loaded successfully');
     } catch (error) {
       console.error('❌ Failed to load model:', error);
@@ -63,28 +75,22 @@ const RealModelPredictor = ({ modelId, modelMetadata, onClose }) => {
       
       // Validate input data
       const features = modelMetadata.features || [];
-      const missingFeatures = features.filter(feature => !inputData[feature] || inputData[feature] === '');
-      
-      if (missingFeatures.length > 0) {
-        throw new Error(`Missing values for: ${missingFeatures.join(', ')}`);
-      }
-
       // Convert string inputs to numbers where appropriate
       const processedInput = {};
       features.forEach(feature => {
         const value = inputData[feature];
-        // Try to convert to number if it looks like a number
-        if (!isNaN(value) && value !== '') {
-          processedInput[feature] = parseFloat(value);
+        const featureMetadata = modelMetadata.featureStats?.[feature];
+        
+        if (featureMetadata?.type === 'numeric') {
+          const numValue = parseFloat(value);
+          if (isNaN(numValue)) {
+            throw new Error(`Invalid numeric value for ${feature}: ${value}`);
+          }
+          processedInput[feature] = numValue;
         } else {
           processedInput[feature] = value;
         }
       });
-
-      // Make real prediction
-      const result = await realMLEngine.predict(processedInput, modelMetadata);
-      setPrediction(result);
-      
       console.log('✅ Real prediction completed:', result);
       
     } catch (error) {

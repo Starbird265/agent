@@ -1,50 +1,50 @@
 # Core Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+fastapi~=0.104
+uvicorn[standard]~=0.24
+python-multipart~=0.0.6
 
 # System Monitoring & Hardware
-psutil==5.9.6
-GPUtil==1.4.0
+psutil~=5.9
+GPUtil~=1.4
 
 # Data Processing & Validation
-pydantic==2.5.0
-pandas==2.1.4
-numpy==1.24.4
-scikit-learn==1.3.2
+pydantic~=2.5
+pandas~=2.1
+numpy~=1.24
+scikit-learn~=1.3
 
 # Security & Authentication
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-decouple==3.8
+python-jose[cryptography]~=3.3
+passlib[bcrypt]~=1.7
+python-decouple~=3.8
 
 # File Handling & Utilities
-aiofiles==23.2.1
-python-magic==0.4.27
+
+python-magic~=0.4
 
 # ML & AI Integration
-transformers==4.36.0
-huggingface-hub==0.19.4
+transformers~=4.36
+huggingface-hub~=0.19
 
 # HTTP Client & External APIs
-httpx==0.25.2
-requests==2.31.0
+httpx~=0.25
+requests>=2.31,<3
 
 # Logging & Monitoring
-loguru==0.7.2
+loguru~=0.7
 
 # Testing & Development
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-pytest-mock==3.12.0
+pytest~=7.4
+pytest-asyncio~=0.21
+pytest-cov~=4.1
+pytest-mock~=3.12
 
 # Environment & Configuration
-python-dotenv==1.0.0
-click==8.1.7
+python-dotenv~=1.0
+click~=8.1
 
 # Date & Time Utilities
-python-dateutil==2.8.2
+python-dateutil~=2.8
 
 # Data Serialization
-orjson==3.9.10
+orjson~=3.9

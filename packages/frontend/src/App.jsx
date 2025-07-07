@@ -452,7 +452,14 @@ export default function App() {
                     setDataset(data);
                     // Store CSV data for real ML training
                     if (csvText) {
-                      localStorage.setItem(`csvData_${project.id}`, csvText);
+                      try {
+                        // Optionally compress CSV data here (e.g., using LZ-string or similar)
+                        // const compressed = compress(csvText);
+                        // localStorage.setItem(`csvData_${project.id}`, compressed);
+                        localStorage.setItem(`csvData_${project.id}`, csvText);
+                      } catch (e) {
+                        addNotification('Failed to save dataset to local storage. Storage may be full or unavailable.', 'error');
+                      }
                     }
                   }} />
                 </div>

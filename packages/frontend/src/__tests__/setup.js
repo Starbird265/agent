@@ -84,7 +84,11 @@ const originalError = console.error;
 beforeAll(() => {
   console.error = (...args) => {
     if (typeof args[0] === 'string' && args[0].includes('Warning:')) {
-      return;
+      // Only suppress React warnings about test environment
+      if (args[0].includes('Warning: ReactDOM.render') ||
+          args[0].includes('Warning: An invalid form control')) {
+        return;
+      }
     }
     originalError.call(console, ...args);
   };

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-
+import React, { useState, useRef, useEffect } from 'react';
++import React, { useState, useRef, useEffect } from 'react';
 const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema }) {
   const [status, setStatus] = useState('idle');
   const [cpuPercent, setCpuPercent] = useState(100);
@@ -11,15 +11,23 @@ const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema })
   const timeoutRef = useRef();
   const lastAction = useRef();
 
-  // Simulate training process offline
+  // Simulate training process offline with proper timeout cleanup
   const handleStart = () => {
     setStatus('starting...');
     setIsLoading(true);
     setTrainingLog(null);
-    setTimeout(() => {
+    // Clear any previous timeouts
+    if (timeoutRef.current) {
+      if (Array.isArray(timeoutRef.current)) {
+        timeoutRef.current.forEach(id => clearTimeout(id));
+      } else {
+        clearTimeout(timeoutRef.current);
+      }
+    }
+    let timeouts = [];
+    // First timeout: simulate starting
+    const firstTimeout = setTimeout(() => {
       setStatus('running');
-      // Simulate log and results
-      let progress = 0;
       let fakeScores = {
         'RandomForest': Math.random() * 0.2 + 0.7,
         'XGBoost': Math.random() * 0.2 + 0.7,
@@ -33,14 +41,31 @@ const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema })
         selected_model: selectedModel
       };
       setTrainingLog(logObj);
-      setTimeout(() => {
+      // Second timeout: simulate completion
+      const secondTimeout = setTimeout(() => {
         setStatus('completed');
         setIsLoading(false);
         // Save a mock model to localStorage
         localStorage.setItem(`model_${projectId}`, JSON.stringify({ trained: true, schema, selectedModel, date: new Date().toISOString() }));
       }, 2000);
+      timeouts.push(secondTimeout);
+      timeoutRef.current = timeouts;
     }, 1200);
+    timeouts.push(firstTimeout);
+    timeoutRef.current = timeouts;
   };
+  // Cleanup all timeouts on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        if (Array.isArray(timeoutRef.current)) {
+          timeoutRef.current.forEach(id => clearTimeout(id));
+        } else {
+          clearTimeout(timeoutRef.current);
+        }
+      }
+    };
+  }, []);
 
   const handlePause = () => {
     setStatus('paused');

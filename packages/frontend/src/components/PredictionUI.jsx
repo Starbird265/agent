@@ -11,9 +11,17 @@ export default function PredictionUI({ projectId, schema }) {
   };
 
   const handlePredict = () => {
-    // Simulate prediction using the mock model from localStorage
-    const model = JSON.parse(localStorage.getItem(`model_${projectId}`) || '{}');
-    if (!model.trained) {
+    // Simulate prediction using the mock model from localStorage, with error handling
+    let model = null;
+    try {
+      const modelStr = localStorage.getItem(`model_${projectId}`);
+      if (!modelStr) throw new Error('No model found');
+      model = JSON.parse(modelStr);
+    } catch (err) {
+      setResult({ error: 'No valid trained model found. Please train a model first.' });
+      return;
+    }
+    if (!model || !model.trained) {
       setResult({ error: 'No trained model found. Please train a model first.' });
       return;
     }

@@ -89,10 +89,19 @@ console.log(result);`;
 
   const handleTestModel = async (model) => {
     if (model.realModel && model.modelId) {
-      // Load real model metadata
-      const modelMetadata = await localDB.getModel(model.modelId);
-      setPredictorModel({ ...model, metadata: modelMetadata });
-      setShowPredictor(true);
+      try {
+        // Load real model metadata
+        const modelMetadata = await localDB.getModel(model.modelId);
+        if (!modelMetadata) {
+          alert('Model metadata not found. Please ensure the model is properly trained.');
+          return;
+        }
+        setPredictorModel({ ...model, metadata: modelMetadata });
+        setShowPredictor(true);
+      } catch (error) {
+        console.error('Error loading model metadata:', error);
+        alert('Failed to load model data. Please try again.');
+      }
     } else {
       // For non-real models, show a message
       alert('This model was trained with simulation. Real prediction is only available for models trained with the Real ML Engine.');

@@ -25,13 +25,13 @@ import ModernButton from '../UI/ModernButton';
  * @returns {JSX.Element} The IntentCapture component
  */
 const IntentCapture = ({ onIntentSubmit, onCancel, initialData = {}, disabled = false }) => {
-  const [intent, setIntent] = useState('');
-  const [selectedUseCase, setSelectedUseCase] = useState('');
-  const [dataSource, setDataSource] = useState('');
+  const [intent, setIntent] = useState(initialData.description || '');
+  const [selectedUseCase, setSelectedUseCase] = useState(initialData.selectedUseCase || '');
+  const [dataSource, setDataSource] = useState(initialData.dataSource || '');
   const [targetMetrics, setTargetMetrics] = useState({
-    accuracy: '',
-    latency: '',
-    cost: 'low'
+    accuracy: initialData.targetMetrics?.accuracy || '',
+    latency: initialData.targetMetrics?.latency || '',
+    cost: initialData.targetMetrics?.cost || 'low'
   });
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);

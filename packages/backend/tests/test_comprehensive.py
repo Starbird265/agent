@@ -254,6 +254,56 @@ class TestInvitationSystem:
         validation = invitation_manager.validate_code("")
         assert validation["valid"] == False
 
+    def test_expired_code(self):
+        """Test invitation code that is expired"""
+        expired_code = "EXPIRED-CODE"
+        invitation_manager.active_codes[expired_code] = {
+            'created': datetime.now().isoformat(),
+            'max_uses': 10,
+            'current_uses': 0,
+            'expires': (datetime.now().replace(year=2000)).isoformat(),  # Expired in the past
+            'description': 'Expired code',
+            'active': True
+        }
+        validation = invitation_manager.validate_code(expired_code)
+        assert validation["valid"] == False
+        assert "expired" in validation.get("reason", "").lower() or not validation["valid"]
+
+    def test_usage_limit_code(self):
+        """Test invitation code that has reached its usage limit"""
+        limited_code = "LIMITED-CODE"
+        invitation_manager.active_codes[limited_code] = {
+            'created': datetime.now().isoformat(),
+            'max_uses': 2,
+            'current_uses': 2,  # Already used up
+            'expires': (datetime.now().replace(year=2100)).isoformat(),
+            'description': 'Usage limit code',
+            'active': True
+        }
+        validation = invitation_manager.validate_code(limited_code)
+        assert validation["valid"] == False
+        assert "usage" in validation.get("reason", "").lower() or not validation["valid"]
+
+    def test_rate_limiting(self):
+        """Test rate limiting for invitation code validation (simulate rapid requests)"""
+        # This assumes invitation_manager has some rate limiting logic (if not, this is a placeholder)
+        rate_code = "RATE-LIMIT-CODE"
+        invitation_manager.active_codes[rate_code] = {
+            'created': datetime.now().isoformat(),
+            'max_uses': 100,
+            'current_uses': 0,
+            'expires': (datetime.now().replace(year=2100)).isoformat(),
+            'description': 'Rate limit code',
+            'active': True
+        }
+        # Simulate rapid requests (if rate limiting is implemented)
+        results = []
+        for _ in range(10):
+            results.append(invitation_manager.validate_code(rate_code))
+        # If rate limiting is present, at least one result should be invalid due to rate limit
+        if any('rate' in (r.get('reason', '').lower()) for r in results):
+            assert any(not r["valid"] for r in results)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

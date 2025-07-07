@@ -46,7 +46,13 @@ const ModernButton = ({
       {...props}
     >
       {loading && (
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2"></div>
+        <div
+          className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2"
+          role="status"
+          aria-label="Loading"
+        >
+          <span className="sr-only">Loading...</span>
+        </div>
       )}
       {icon && !loading && (
         <span className="mr-2">{icon}</span>

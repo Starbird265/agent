@@ -91,7 +91,7 @@ export const usePerformance = (componentName, options = {}) => {
     return () => clearTimeout(timeoutId);
   }, [componentName, trackMount, shouldSample, metadata]);
 
-  // Track renders
+  // Track renders (runs only once per component instance)
   useEffect(() => {
     if (!trackRender || !shouldSample()) return;
 
@@ -133,7 +133,7 @@ export const usePerformance = (componentName, options = {}) => {
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  });
+  }, [componentName, trackRender, shouldSample, metadata, trackUpdates]);
 
   /**
    * Start a custom performance measurement
