@@ -3,6 +3,7 @@
 // Test the enhanced features to see if they actually work
 
 console.log('🧪 Testing Enhanced Features...\n');
+let failureCount = 0;
 
 // Test 1: Import and test authentication system
 console.log('1️⃣ Testing Authentication System...');
@@ -20,13 +21,16 @@ try {
   
   const registerResult = authSystem.register(testUser);
   console.log('✅ User registration test:', registerResult ? 'PASSED' : 'FAILED');
+  if (!registerResult) failureCount++;
   
   // Test user login
   const loginResult = authSystem.login({ username: 'testuser', password: 'TestPassword123!' });
   console.log('✅ User login test:', loginResult ? 'PASSED' : 'FAILED');
+  if (!loginResult) failureCount++;
   
 } catch (error) {
   console.log('❌ Authentication system test failed:', error.message);
+  failureCount++;
 }
 
 // Test 2: Test data processing
@@ -94,3 +98,59 @@ try {
 }
 
 console.log('\n🎯 Feature Testing Complete!');
+
+if (failureCount > 0) {
+  console.log(`\n❌ ${failureCount} test(s) failed`);
+  process.exit(1);
+} else {
+  console.log('\n✅ All tests passed');
+  process.exit(0);
+}
+  console.log('❌ Team collaboration test failed:', error.message);
+}
+
+console.log('\n🎯 Feature Testing Complete!');
+
+if (failureCount > 0) {
+  console.log(`\n❌ ${failureCount} test(s) failed`);
+  process.exit(1);
+} else {
+  console.log('\n✅ All tests passed');
+  process.exit(0);
+}
+  console.log('❌ Team collaboration test failed:', error.message);
+}
+
+console.log('\n🎯 Feature Testing Complete!');
+
+if (failureCount > 0) {
+  console.log(`\n❌ ${failureCount} test(s) failed`);
+  process.exit(1);
+} else {
+  console.log('\n✅ All tests passed');
+  process.exit(0);
+}
+  console.log('❌ Team collaboration test failed:', error.message);
+}
+
+console.log('\n🎯 Feature Testing Complete!');
+
+if (failureCount > 0) {
+  console.log(`\n❌ ${failureCount} test(s) failed`);
+  process.exit(1);
+} else {
+  console.log('\n✅ All tests passed');
+  process.exit(0);
+}
+  console.log('❌ Team collaboration test failed:', error.message);
+}
+
+console.log('\n🎯 Feature Testing Complete!');
+
+if (failureCount > 0) {
+  console.log(`\n❌ ${failureCount} test(s) failed`);
+  process.exit(1);
+} else {
+  console.log('\n✅ All tests passed');
+  process.exit(0);
+}

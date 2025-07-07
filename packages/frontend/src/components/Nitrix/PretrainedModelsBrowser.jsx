@@ -10,6 +10,60 @@ import {
   loadPretrainedModel 
 } from '../../lib/pretrainedModels';
 
+// Memoized ModelCard component for performance
+const ModelCard = React.memo(({ model, isSelected, onSelect }) => (
+  <motion.div
+    layout
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    whileHover={{ scale: 1.02 }}
+    onClick={() => onSelect(model)}
+    className={`cursor-pointer transition-all ${
+      isSelected
+        ? 'ring-2 ring-blue-500 shadow-lg'
+        : 'hover:shadow-md'
+    }`}
+  >
+    <ModernCard className="h-full">
+      <div className="flex items-start gap-4">
+        <div className="text-3xl">{model.icon}</div>
+        <div className="flex-1">
+          <h3 className="font-semibold text-lg mb-2">{model.name}</h3>
+          <p className="text-gray-600 text-sm mb-3">{model.description}</p>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="text-center p-2 bg-green-50 rounded">
+              <div className="text-green-600 font-semibold">{model.accuracy}%</div>
+              <div className="text-xs text-gray-600">Accuracy</div>
+            </div>
+            <div className="text-center p-2 bg-blue-50 rounded">
+              <div className="text-blue-600 font-semibold">{model.latency}</div>
+              <div className="text-xs text-gray-600">Speed</div>
+            </div>
+            <div className="text-center p-2 bg-purple-50 rounded">
+              <div className="text-purple-600 font-semibold">{model.size}</div>
+              <div className="text-xs text-gray-600">Size</div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1 mb-3">
+            {model.tags.slice(0, 3).map(tag => (
+              <span 
+                key={tag}
+                className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          <div className="text-sm text-gray-500">
+            <strong>Use cases:</strong> {model.examples.slice(0, 2).join(', ')}
+          </div>
+        </div>
+      </div>
+    </ModernCard>
+  </motion.div>
+));
+
 const PretrainedModelsBrowser = ({ onModelSelect, onCancel }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -49,61 +103,6 @@ const PretrainedModelsBrowser = ({ onModelSelect, onCancel }) => {
     }
   };
 
-  const ModelCard = ({ model }) => (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ scale: 1.02 }}
-      onClick={() => handleModelSelect(model)}
-      className={`cursor-pointer transition-all ${
-        selectedModel?.id === model.id 
-          ? 'ring-2 ring-blue-500 shadow-lg' 
-          : 'hover:shadow-md'
-      }`}
-    >
-      <ModernCard className="h-full">
-        <div className="flex items-start gap-4">
-          <div className="text-3xl">{model.icon}</div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg mb-2">{model.name}</h3>
-            <p className="text-gray-600 text-sm mb-3">{model.description}</p>
-            
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className="text-center p-2 bg-green-50 rounded">
-                <div className="text-green-600 font-semibold">{model.accuracy}%</div>
-                <div className="text-xs text-gray-600">Accuracy</div>
-              </div>
-              <div className="text-center p-2 bg-blue-50 rounded">
-                <div className="text-blue-600 font-semibold">{model.latency}</div>
-                <div className="text-xs text-gray-600">Speed</div>
-              </div>
-              <div className="text-center p-2 bg-purple-50 rounded">
-                <div className="text-purple-600 font-semibold">{model.size}</div>
-                <div className="text-xs text-gray-600">Size</div>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-1 mb-3">
-              {model.tags.slice(0, 3).map(tag => (
-                <span 
-                  key={tag}
-                  className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            
-            <div className="text-sm text-gray-500">
-              <strong>Use cases:</strong> {model.examples.slice(0, 2).join(', ')}
-            </div>
-          </div>
-        </div>
-      </ModernCard>
-    </motion.div>
-  );
 
   const PopularModels = () => {
     const popular = getPopularModels();
@@ -112,7 +111,12 @@ const PretrainedModelsBrowser = ({ onModelSelect, onCancel }) => {
         <h2 className="text-2xl font-bold mb-4">🔥 Popular Models</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {popular.map(model => (
-            <ModelCard key={model.id} model={model} />
+            <ModelCard
+              key={model.id}
+              model={model}
+              isSelected={selectedModel?.id === model.id}
+              onSelect={handleModelSelect}
+            />
           ))}
         </div>
       </div>
@@ -211,7 +215,12 @@ const PretrainedModelsBrowser = ({ onModelSelect, onCancel }) => {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
               {filteredModels.map(model => (
-                <ModelCard key={model.id} model={model} />
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  isSelected={selectedModel?.id === model.id}
+                  onSelect={handleModelSelect}
+                />
               ))}
             </motion.div>
           )}

@@ -25,12 +25,23 @@ const EnhancedFeatures = () => {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    checkAuthStatus();
-    loadDeployedModels();
-    loadProjects();
-    loadNotifications();
+    let mounted = true;
+    
+    const loadData = async () => {
+      if (mounted) {
+        await checkAuthStatus();
+        await loadDeployedModels();
+        await loadProjects();
+        await loadNotifications();
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
-
   const checkAuthStatus = async () => {
     try {
       const authenticated = authSystem.isAuthenticated();
@@ -118,6 +129,12 @@ const EnhancedFeatures = () => {
       console.error('Error loading notifications:', error);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadNotifications();
+    }
+  }, [user]);
 
   const createSampleProject = async () => {
     try {
