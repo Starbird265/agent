@@ -403,6 +403,7 @@ class TestPerformanceMonitoring:
         
         result, duration = slow_operation()
         assert result == "completed"
+        duration = float(duration)
         assert 0.09 <= duration <= 0.15  # Allow some variance
     
     def test_performance_thresholds(self):
