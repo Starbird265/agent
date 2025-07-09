@@ -9,6 +9,25 @@ console.log('🧪 Testing Pre-trained Models System...\n');
 // Test 1: Import pre-trained models library
 console.log('1️⃣ Testing Models Library Import...');
 try {
+  const pretrainedModelsModule = require('./packages/frontend/src/lib/pretrainedModels.js');
+  
+  // Validate required exports
+  const requiredExports = [
+    'pretrainedModels',
+    'modelCategories',
+    'searchModels',
+    'getPopularModels',
+    'getModelById',
+    'loadPretrainedModel'
+  ];
+  const missingExports = requiredExports.filter(exp => !pretrainedModelsModule[exp]);
+  
+  if (missingExports.length > 0) {
+    throw new Error(
+      `Missing exports from pretrainedModels module: ${missingExports.join(', ')}`
+    );
+  }
+  
   const { 
     pretrainedModels, 
     modelCategories, 
@@ -16,7 +35,7 @@ try {
     getPopularModels,
     getModelById,
     loadPretrainedModel 
-  } = require('./packages/frontend/src/lib/pretrainedModels.js');
+  } = pretrainedModelsModule;
   
   console.log('✅ Pre-trained models library imported successfully');
   console.log(`✅ Found ${pretrainedModels.length} models available`);
@@ -67,7 +86,7 @@ try {
       
       // Test 5: List all available models
       console.log('5️⃣ Available Models Summary:');
-      console.log('=' .repeat(60));
+      console.log('='.repeat(60));
       
       const categories = {};
       pretrainedModels.forEach(model => {

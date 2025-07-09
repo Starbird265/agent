@@ -25,8 +25,19 @@ if (typeof window === 'undefined') {
 
 // Mock fetch API
 if (typeof fetch === 'undefined') {
-  global.fetch = async (url) => {
+  global.fetch = async (url, options = {}) => {
     console.log(`🌐 Mock fetch: ${url}`);
+    
+    // Simulate different responses based on URL patterns
+    if (url.includes('/error')) {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => { throw new Error('Internal Server Error'); },
+        text: async () => 'Internal Server Error'
+      };
+    }
+    
     return {
       ok: true,
       status: 200,

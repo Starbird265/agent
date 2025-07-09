@@ -21,7 +21,8 @@ async function testUI() {
     
     // Navigate to the app
     console.log('1️⃣ Loading application...');
-    await page.goto('http://localhost:5173/agent/', { waitUntil: 'networkidle0' });
+    const baseUrl = process.env.TEST_URL || 'http://localhost:5173';
+    await page.goto(`${baseUrl}/agent/`, { waitUntil: 'networkidle0' });
     
     // Check if the page loaded
     const title = await page.title();
@@ -29,7 +30,9 @@ async function testUI() {
     
     // Look for the Create Model button
     console.log('2️⃣ Looking for Create Model button...');
-    const createModelButton = await page.$('button:has-text("Create Model")');
+    // replace Playwright-only selector with an XPath lookup in Puppeteer
+-   const createModelButton = await page.$('button:has-text("Create Model")');
++   const createModelButton = await page.$x('//button[contains(text(), "Create Model")]');
     
     if (createModelButton) {
       console.log('✅ Create Model button found');
@@ -51,7 +54,8 @@ async function testUI() {
         
         // Check if the models browser loaded
         console.log('4️⃣ Checking if models browser loaded...');
-        const modelsBrowser = await page.$('text=Pre-trained AI Models');
+        // Use Puppeteer-compatible XPath selector for text content
+        const [modelsBrowser] = await page.$x('//*[contains(text(), "Pre-trained AI Models")]');
         
         if (modelsBrowser) {
           console.log('✅ Models browser loaded successfully');
@@ -71,7 +75,7 @@ async function testUI() {
           }
           
           // Check if categories exist
-          const categories = await page.$$('button:has-text("All Models")');
+          const categories = await page.$x('//button[contains(text(), "All Models")]');
           if (categories.length > 0) {
             console.log('✅ Category filtering available');
           }
@@ -99,7 +103,9 @@ async function testUI() {
 
 // Check if puppeteer is available
 try {
-  testUI();
+  (async () => {
+    await testUI();
+  })();
 } catch (error) {
   console.log('⚠️  Puppeteer not available, skipping UI test');
   console.log('🔧 To install: npm install puppeteer');

@@ -69,7 +69,13 @@
     "react-use": "^17.4.0",
     "recharts": "^2.9.0",
     "tailwind-merge": "^2.2.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "dompurify": "^3.0.5",
+    "js-cookie": "^3.0.5",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",

@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # Temporal PostgreSQL Database
+  temporal-postgresql:
+    image: postgres:13
+    container_name: temporal-postgresql
+    environment:
+      POSTGRES_DB: temporal
+      POSTGRES_USER: temporal_user
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal_password_2024}
+    ports:
+      - "127.0.0.1:5433:5432"  # Only localhost access
+    volumes:
+      - temporal_postgresql_data:/var/lib/postgresql/data
+    networks:
+      - temporal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal_user -d temporal"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Temporal Server
+  temporal:
+    image: temporalio/auto-setup:1.22.4
+    container_name: temporal-server
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal_user
+      - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal_password_2024}
+      - POSTGRES_SEEDS=temporal-postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=false
+      - SKIP_SCHEMA_SETUP=false
+    ports:
+      - "127.0.0.1:7233:7233"  # Only localhost access - gRPC
+      - "127.0.0.1:6933:6933"  # Only localhost access - Membership
+    volumes:
+      - ./temporal-config:/etc/temporal/config/dynamicconfig
+    networks:
+      - temporal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Temporal Web UI
+  temporal-ui:
+    image: temporalio/ui:2.21.3
+    container_name: temporal-ui
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+      - TEMPORAL_UI_PORT=8080
+    ports:
+      - "127.0.0.1:8080:8080"  # Only localhost access
+    networks:
+      - temporal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Temporal Admin Tools (for debugging)
+  temporal-admin-tools:
+    image: temporalio/admin-tools:1.22.4
+    container_name: temporal-admin-tools
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    networks:
+      - temporal-network
+    stdin_open: true
+    tty: true
+    profiles:
+      - tools
+    command: /bin/bash
+
+volumes:
+  temporal_postgresql_data:
+    driver: local
+
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network-new
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

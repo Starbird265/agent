@@ -1,0 +1,41 @@
+{
+  "name": "nitrix-platform",
+  "version": "1.0.0",
+  "description": "Nitrix AI Training Platform - Complete Auto-Start Solution",
+  "main": "NITRIX_AUTOSTART.sh",
+  "scripts": {
+    "start": "./NITRIX_AUTOSTART.sh",
+    "start:windows": "NITRIX_AUTOSTART.bat",
+    "setup": "./auto-setup.sh",
+    "dev": "./NITRIX_AUTOSTART.sh",
+    "build": "cd packages/frontend && npm run build",
+    "test": "cd packages/frontend && npm test",
+    "launch": "./LAUNCH_NITRIX.command",
+    "install-autostart": "./install-autostart.sh install",
+    "uninstall-autostart": "./install-autostart.sh uninstall",
+    "desktop-app": "cd desktop-app && npm install && npm start",
+    "build-desktop": "cd desktop-app && npm run build",
+    "health-check": "curl -s http://localhost:8000/health && curl -s http://localhost:5173",
+    "stop-services": "pkill -f 'uvicorn.*simple_main' || true && pkill -f 'npm run dev' || true"
+  },
+  "keywords": ["ai", "machine-learning", "no-code", "auto-start", "desktop", "electron"],
+  "author": "Nitrix Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/nitrix-platform.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.8.0"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "autostart": {
+    "enabled": true,
+    "platforms": {
+      "darwin": "launchd",
+      "linux": "systemd",
+      "win32": "registry"
+    }
+  }
+}

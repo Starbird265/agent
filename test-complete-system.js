@@ -5,7 +5,7 @@
  */
 
 console.log('🎯 COMPLETE SYSTEM TEST: Real ML Training with Quality Results');
-console.log('=' .repeat(80));
+console.log('='.repeat(80));
 
 // Mock the real-time training system
 class MockRealTimeTrainingEngine {

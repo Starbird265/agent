@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nitrix AI Training Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .logo::before {
+            content: '🧠';
+            font-size: 60px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .status {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            padding: 15px 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .feature {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .feature h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .feature p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: progress 3s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        .version {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"></div>
+        <h1>Nitrix</h1>
+        <div class="tagline">Train Smarter AI—No Cloud, No Code, Just Power</div>
+        
+        <div class="status" id="status">
+            Initializing platform...
+        </div>
+        
+        <div class="spinner"></div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🤖 AI Training</h3>
+                <p>8 advanced ML algorithms ready to train</p>
+            </div>
+            <div class="feature">
+                <h3>🔒 Privacy First</h3>
+                <p>All processing happens locally</p>
+            </div>
+            <div class="feature">
+                <h3>📊 Real-time</h3>
+                <p>Live training progress and metrics</p>
+            </div>
+            <div class="feature">
+                <h3>🎯 No Code</h3>
+                <p>Drag, drop, and train - that's it</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="version" id="version">v1.0.0</div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        // Update status when received from main process
+        ipcRenderer.on('update-status', (event, message) => {
+            document.getElementById('status').textContent = message;
+        });
+        
+        // Handle menu events
+        ipcRenderer.on('menu-about', () => {
+            alert('Nitrix AI Training Platform v1.0.0\nTrain Smarter AI—No Cloud, No Code, Just Power\n\nBuilt with ❤️ by Nitrix Team');
+        });
+        
+        // Get app version
+        ipcRenderer.invoke('get-app-version').then(version => {
+            document.getElementById('version').textContent = `v${version}`;
+        });
+        
+        // Simulate startup progress
+        setTimeout(() => {
+            document.getElementById('status').textContent = 'Setting up Python environment...';
+        }, 2000);
+        
+        setTimeout(() => {
+            document.getElementById('status').textContent = 'Installing dependencies...';
+        }, 4000);
+        
+        setTimeout(() => {
+            document.getElementById('status').textContent = 'Starting services...';
+        }, 6000);
+        
+        setTimeout(() => {
+            document.getElementById('status').textContent = 'Almost ready...';
+        }, 8000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "name": "nitrix-desktop",
+  "version": "1.0.0",
+  "description": "Nitrix AI Training Platform - Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "dev": "electron . --dev",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "author": "Nitrix Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "electron-is-dev": "^2.0.0",
+    "node-pty": "^0.10.1"
+  },
+  "build": {
+    "appId": "com.nitrix.platform",
+    "productName": "Nitrix AI Training Platform",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

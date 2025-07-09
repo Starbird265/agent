@@ -1,7 +1,15 @@
-fastapi>=0.68.0
-uvicorn>=0.15.0
-pydantic>=1.8.2
-requests>=2.26.0
-huggingface-hub>=0.4.0
-python-multipart>=0.0.5
-python-dotenv>=0.19.0
+# Core web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Data handling
+requests==2.31.0
+python-multipart==0.0.6
+
+# Basic dependencies (no compilation issues)
+python-dotenv==1.0.0
+slowapi==0.1.9
+
+# Optional: Install these manually if needed
+# pydantic==2.5.0  # Will use compatible version
+# cryptography==41.0.7  # Will use compatible version

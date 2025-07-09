@@ -1,0 +1,81 @@
+# Temporal Development Configuration for SQL Backend
+# Optimized for local development with PostgreSQL
+
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+
+limit.maxIDLength:
+  - value: 1000
+
+system.advancedVisibilityWritingMode:
+  - value: "off"
+
+system.enableReadFromClosedExecutionV2:
+  - value: true
+
+frontend.enableWorkerVersioningDataAPIs:
+  - value: true
+
+frontend.enableWorkerVersioningWorkflowAPIs:
+  - value: true
+
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+
+frontend.enableUpdateWorkflowExecutionAsyncAccepted:
+  - value: true
+
+# Enhanced security settings
+system.enableActivityLocalDispatchByDomain:
+  - value: false
+
+# Resource management
+limit.taskQueueScanRPS:
+  - value: 100
+
+limit.activityAPIRPS:
+  - value: 100
+
+limit.workflowAPIRPS:
+  - value: 100
+
+# Memory optimization for local development
+system.blobSizeLimitError:
+  - value: 2097152  # 2MB
+
+system.blobSizeLimitWarn:
+  - value: 262144   # 256KB
+
+# Enhanced logging for development
+log.level:
+  - value: "info"
+
+# Local development optimizations
+system.enableCrossNamespaceReplication:
+  - value: false
+
+# Security enhancements
+frontend.enableTokenNamespaceEnforcement:
+  - value: true
+
+# Performance tuning for ML workloads
+limit.maxConcurrentActivityExecutionSize:
+  - value: 1000
+
+limit.maxConcurrentWorkflowTaskExecutionSize:
+  - value: 1000
+
+# Workflow execution limits for ML training
+limit.maxWorkflowExecutionTimeout:
+  - value: "43200s"  # 12 hours
+
+limit.maxActivityExecutionTimeout:
+  - value: "7200s"   # 2 hours
+
+# History size limits for ML workflows
+limit.maxWorkflowExecutionHistorySize:
+  - value: 51200   # 50KB events
+
+# Enhanced visibility for debugging
+system.enableLogCustomerQueryParameter:
+  - value: true

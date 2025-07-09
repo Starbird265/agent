@@ -1,0 +1,3 @@
+#!/bin/bash
+cd "./../../.."
+./nitrix-start.sh
