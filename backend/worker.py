@@ -8,7 +8,9 @@ import asyncio
 import logging
 import signal
 import sys
-from typing import Dict, Any
+import traceback
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta
 
 from temporalio import activity, workflow
 from temporalio.client import Client
@@ -77,9 +79,19 @@ class WorkerManager:
             # Start worker
             await self.worker.run()
             
-        except Exception as e:
-            logger.error(f"Failed to start worker: {str(e)}")
-            raise
+        except (ConnectionError, TimeoutError, RuntimeError) as e:
+            logger.error("Failed to start worker", extra={
+                "error": str(e),
+                "stack_trace": traceback.format_exc(),
+                "task_queue": temporal_config.task_queue,
+                "namespace": temporal_config.namespace,
+                "server": f"{temporal_config.server_host}:{temporal_config.server_port}"
+            })
+            await self.stop()
+            sys.exit(1)
+
+        finally:
+            await self.stop()
     
     async def stop(self):
         """Stop the Temporal worker"""
@@ -89,15 +101,24 @@ class WorkerManager:
             self.running = False
             logger.info("✅ Worker stopped")
     
-    async def health_check(self):
-        """Check worker health"""
-        return {
-            "status": "healthy" if self.running else "stopped",
-            "client_connected": self.client is not None,
-            "worker_running": self.running,
-            "task_queue": temporal_config.task_queue,
-            "namespace": temporal_config.namespace
-        }
+    async def health_check(self) -> Dict[str, Any]:
+        """Check worker health with error handling"""
+        try:
+            return {
+                "status": "healthy" if self.running else "stopped",
+                "client_connected": self.client is not None,
+                "worker_running": self.running,
+                "task_queue": temporal_config.task_queue,
+                "namespace": temporal_config.namespace,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        except Exception as e:
+            logger.error("Health check failed", extra={
+                "error": str(e),
+                "stack_trace": traceback.format_exc(),
+                "component": "worker_health"
+            })
+            return {"status": "error", "details": str(e)}
 
 # Global worker manager instance
 worker_manager = WorkerManager()
@@ -109,24 +130,29 @@ async def main():
         """Handle shutdown signals"""
         logger.info(f"Received signal {signum}, initiating shutdown...")
         asyncio.create_task(worker_manager.stop())
-        sys.exit(0)
+        sys.exit(1 if worker_manager.running else 0)
     
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
-        # Start worker
         await worker_manager.start()
-        
+        while True:
+            await asyncio.sleep(60)
+            health = await worker_manager.health_check()
+            logger.debug(f"Worker health status: {health}")
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt, shutting down...")
-        await worker_manager.stop()
-        
     except Exception as e:
-        logger.error(f"Worker error: {str(e)}")
-        await worker_manager.stop()
+        logger.critical("Unexpected worker failure", extra={
+            "error": str(e),
+                "stack_trace": traceback.format_exc(),
+            "task_queue": temporal_config.task_queue
+        })
         sys.exit(1)
+    finally:
+        await worker_manager.stop()
 
 if __name__ == "__main__":
     # Run the worker

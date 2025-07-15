@@ -153,6 +153,10 @@ class SecureGeminiService:
             r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',  # Credit card
             r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email
             r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',  # IP address
+            r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b',  # Phone numbers
+            r'\b[A-Z]{2}\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b',  # IBAN
+            r'-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----',  # Private keys
+            r'(?:api[_-]?key|apikey|access[_-]?token)[\s:=]+[\'"]?([a-zA-Z0-9_-]{20,})[\'"]?',  # API keys
         ]
         
         import re
@@ -385,10 +389,25 @@ class SecureModelTrainingWorkflow:
             audit_training_process,
             training_result,
             start_to_close_timeout=timedelta(minutes=5)
-        )
-        
-        return training_result
-    
+    def _validate_training_request(self, request: Dict[str, Any]) -> bool:
+        """Validate training request for security"""
+        required_fields = ["data", "config", "user_id"]
+        if not all(field in request for field in required_fields):
+            return False
+
+        # Validate field types
+        if not isinstance(request.get("data"), dict):
+            return False
+        if not isinstance(request.get("config"), dict):
+            return False
+        if not isinstance(request.get("user_id"), str) or not request["user_id"].strip():
+            return False
+
+        # Additional security checks
+        if len(str(request)) > 10 * 1024 * 1024:  # 10MB limit
+            return False
+
+        return True
     def _validate_training_request(self, request: Dict[str, Any]) -> bool:
         """Validate training request for security"""
         required_fields = ["data", "config", "user_id"]

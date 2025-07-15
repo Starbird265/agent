@@ -7,6 +7,7 @@ Guaranteed to work for auto-start functionality
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import uvicorn
 import time
 import logging
@@ -17,11 +18,25 @@ from typing import Dict, List, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# In-memory storage
+projects = {}
+models = {}
+sessions = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events"""
+    logger.info("🚀 Nitrix Backend starting up...")
+    logger.info("✅ All endpoints initialized")
+    yield
+    logger.info("🛑 Nitrix Backend shutting down...")
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Nitrix Backend", 
     version="1.0.0",
-    description="Nitrix AI Training Platform - Minimal Backend"
+    description="Nitrix AI Training Platform - Minimal Backend",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -32,11 +47,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# In-memory storage
-projects = {}
-models = {}
-sessions = {}
 
 # Root endpoint
 @app.get("/")
@@ -229,16 +239,7 @@ async def global_exception_handler(request, exc):
         content={"error": "Internal server error", "message": str(exc)}
     )
 
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    logger.info("🚀 Nitrix Backend starting up...")
-    logger.info("✅ All endpoints initialized")
-
-# Shutdown event  
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("🛑 Nitrix Backend shutting down...")
+# Startup and shutdown events are now handled by lifespan
 
 # Main execution
 if __name__ == "__main__":

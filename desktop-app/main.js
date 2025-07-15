@@ -1,7 +1,12 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
-const isDev = require('electron-is-dev');
+let isDev = false;
+try {
+  isDev = require('electron-is-dev');
+} catch (e) {
+  isDev = process.env.NODE_ENV === 'development';
+}
 
 let mainWindow;
 let backendProcess;
@@ -19,7 +24,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    // icon: path.join(__dirname, 'assets', 'icon.png'), // Disabled until icon exists
     titleBarStyle: 'default',
     show: false // Don't show until ready
   });
@@ -47,6 +52,9 @@ function createWindow() {
 
   // Set up menu
   createMenu();
+  
+  // Set up IPC handlers
+  setupIPC();
 }
 
 // Function to create application menu
@@ -138,6 +146,27 @@ function createMenu() {
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
+}
+
+// Function to set up IPC handlers
+function setupIPC() {
+  // Handle app version request
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
+  });
+  
+  // Handle restart services request
+  ipcMain.handle('restart-services', () => {
+    stopServices();
+    setTimeout(() => {
+      startServices();
+    }, 2000);
+  });
+  
+  // Handle external link opening
+  ipcMain.handle('open-external', (event, url) => {
+    shell.openExternal(url);
+  });
 }
 
 // Function to start backend and frontend services

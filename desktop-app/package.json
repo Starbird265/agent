@@ -9,8 +9,7 @@
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
-    "dev": "electron . --dev",
-    "postinstall": "electron-builder install-app-deps"
+    "dev": "electron . --dev"
   },
   "author": "Nitrix Team",
   "license": "MIT",
@@ -19,8 +18,7 @@
     "electron-builder": "^24.6.4"
   },
   "dependencies": {
-    "electron-is-dev": "^2.0.0",
-    "node-pty": "^0.10.1"
+    "electron-is-dev": "^2.0.0"
   },
   "build": {
     "appId": "com.nitrix.platform",

@@ -221,8 +221,11 @@ EOF
     source ../venv/bin/activate
     if [ -f "minimal_main.py" ]; then
         python3 minimal_main.py &
-    else
+    elif [ -f "simple_main.py" ]; then
         python3 simple_main.py &
+    else
+        print_error "No backend file found (minimal_main.py or simple_main.py)"
+        exit 1
     fi
     BACKEND_PID=$!
     
@@ -230,16 +233,21 @@ EOF
     
     # Wait for backend to start
     print_status "Waiting for backend to initialize..."
-    sleep 3
+    sleep 5
     
-    # Test backend connection
-    if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-        print_success "Backend started successfully (PID: $BACKEND_PID)"
-    else
-        print_warning "Backend may still be starting..."
-    fi
+    # Test backend connection with retries
+    for i in {1..10}; do
+        if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+            print_success "Backend started successfully (PID: $BACKEND_PID)"
+            break
+        elif [ $i -eq 10 ]; then
+            print_warning "Backend is taking longer to start, but continuing..."
+        else
+            sleep 1
+        fi
+    done
     
-    return $BACKEND_PID
+    echo $BACKEND_PID
 }
 
 # Function to start frontend
@@ -260,7 +268,7 @@ start_frontend() {
     
     print_success "Frontend started successfully (PID: $FRONTEND_PID)"
     
-    return $FRONTEND_PID
+    echo $FRONTEND_PID
 }
 
 # Function to open browser

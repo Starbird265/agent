@@ -23,7 +23,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/nitrix-platform.git"
+    "url": "https://github.com/Starbird265/agent.git"
   },
   "engines": {
     "node": ">=18.0.0",
