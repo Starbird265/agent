@@ -1,27 +1,37 @@
-import { Component } from 'react';
+import React from 'react';
 
-export class ErrorBoundary extends Component {
-  state = { hasError: false };
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
 
   static getDerivedStateFromError(error) {
     return { hasError: true };
   }
 
-  componentDidCatch(error, info) {
-    console.error('Training Interface Error:', error, info);
-    // TODO: Add error logging service integration
+  componentDidCatch(error, errorInfo) {
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+    console.error("Uncaught error:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-4 bg-red-50 border-red-200">
-          <h3 className="text-red-600 font-medium">
-            Training interface unavailable
-          </h3>
-          <p className="mt-2 text-red-500 text-sm">
-            Our engineers have been notified. Please refresh the page.
-          </p>
+        <div className="flex flex-col items-center justify-center h-screen bg-red-50 text-red-700 p-8">
+          <h1 className="text-3xl font-bold mb-4">Something went wrong.</h1>
+          <p className="text-lg mb-8">We're sorry for the inconvenience. Please try refreshing the application.</p>
+          <details className="w-full max-w-2xl bg-white p-4 rounded-lg shadow-md">
+            <summary className="font-semibold cursor-pointer">Error Details</summary>
+            <pre className="mt-4 text-sm text-left whitespace-pre-wrap">
+              {this.state.error && this.state.error.toString()}
+              <br />
+              {this.state.errorInfo && this.state.errorInfo.componentStack}
+            </pre>
+          </details>
         </div>
       );
     }
@@ -29,3 +39,5 @@ export class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
+export default ErrorBoundary;
