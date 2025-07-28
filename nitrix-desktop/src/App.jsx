@@ -130,19 +130,29 @@ export default function App() {
         setCurrentTab('projects');
         break;
       case 'open-project':
-        // This needs to be handled by the component that opens projects
+        window.dispatchEvent(new CustomEvent('electron-menu', {
+          detail: { action: 'open-project', path: data }
+        }));
         break;
       case 'export-model':
-        // This needs to be handled by the component that exports models
+        window.dispatchEvent(new CustomEvent('electron-menu', {
+          detail: { action: 'export-model' }
+        }));
         break;
       case 'train-model':
-        // This needs to be handled by the component that trains models
+        window.dispatchEvent(new CustomEvent('electron-menu', {
+          detail: { action: 'train-model' }
+        }));
         break;
       case 'test-model':
-        // This needs to be handled by the component that tests models
+        window.dispatchEvent(new CustomEvent('electron-menu', {
+          detail: { action: 'test-model' }
+        }));
         break;
       case 'model-settings':
-        // This needs to be handled by the component that manages model settings
+        window.dispatchEvent(new CustomEvent('electron-menu', {
+          detail: { action: 'model-settings' }
+        }));
         break;
     }
   };
