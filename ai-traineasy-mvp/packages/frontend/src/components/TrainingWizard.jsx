@@ -29,6 +29,35 @@ const TrainingWizard = React.memo(function TrainingWizard({ projectId, schema })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const handleAction = async (action) => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    lastAction.current = action;
+    try {
+      const cleanup = await action();
+      if (typeof cleanup === 'function') {
+        timeoutRef.current = cleanup;
+      }
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Mock API functions for now
+  const pauseTraining = async (projectId) => {
+    console.log(`Pausing training for project ${projectId}`);
+    // In a real scenario, this would be an API call
+    return Promise.resolve();
+  };
+
+  const resumeTraining = async (projectId) => {
+    console.log(`Resuming training for project ${projectId}`);
+    // In a real scenario, this would be an API call
+    return Promise.resolve();
+  };
 
 
   // Update button handlers
