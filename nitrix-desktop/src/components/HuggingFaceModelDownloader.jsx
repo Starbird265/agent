@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { downloadHuggingFaceModel } from '../api';
+import { useState, useEffect, useRef } from 'react';
+import { downloadHuggingFaceModel, searchHuggingFaceModels } from '../api';
 
 function getDownloadedModels(projectId) {
   // List models from the backend (by reading the project folder)
@@ -15,42 +15,70 @@ export default function HuggingFaceModelDownloader({ projectId, onDownload }) {
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [downloaded, setDownloaded] = useState([]);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     if (projectId) {
       getDownloadedModels(projectId).then(setDownloaded);
     }
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [projectId, status]);
 
   // Search Hugging Face models
   const handleSearch = async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     setResults([]);
     setStatus('searching');
     setMessage('');
     try {
-      const res = await fetch(`/search-hf-models?q=${encodeURIComponent(search)}`);
-      const data = await res.json();
+      const data = await searchHuggingFaceModels(search, {
+        signal: abortControllerRef.current.signal,
+      });
       if (Array.isArray(data)) setResults(data);
       else setMessage(data.error || 'No results');
     } catch (e) {
-      setMessage('Search failed');
+      if (e.name !== 'AbortError') {
+        setMessage('Search failed');
+      }
     }
     setStatus('idle');
   };
 
   const handleDownload = async (id) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     setModelId(id);
     setStatus('downloading');
     setMessage('');
-    const result = await downloadHuggingFaceModel(id, projectId);
-    if (result.success) {
-      setStatus('success');
-      setMessage(result.message);
-      if (onDownload) onDownload(id);
-      getDownloadedModels(projectId).then(setDownloaded);
-    } else {
-      setStatus('error');
-      setMessage(result.error || 'Download failed');
+    try {
+      const result = await downloadHuggingFaceModel(id, projectId, {
+        signal: abortControllerRef.current.signal,
+      });
+      if (result.success) {
+        setStatus('success');
+        setMessage(result.message);
+        if (onDownload) onDownload(id);
+        getDownloadedModels(projectId).then(setDownloaded);
+      } else {
+        setStatus('error');
+        setMessage(result.error || 'Download failed');
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        setStatus('error');
+        setMessage('Download failed');
+      }
     }
   };
 
@@ -60,6 +88,14 @@ export default function HuggingFaceModelDownloader({ projectId, onDownload }) {
     await fetch(`/projects/${projectId}/hf_models/${id}`, { method: 'DELETE' });
     getDownloadedModels(projectId).then(setDownloaded);
     setStatus('idle');
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setStatus('idle');
+      setMessage('Operation canceled.');
+    }
   };
 
   return (
@@ -81,6 +117,14 @@ export default function HuggingFaceModelDownloader({ projectId, onDownload }) {
         >
           {status === 'searching' ? 'Searching...' : 'Search'}
         </button>
+        {(status === 'searching' || status === 'downloading') && (
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700"
+          >
+            Cancel
+          </button>
+        )}
       </div>
       {results.length > 0 && (
         <div className="bg-blue-50 rounded-lg p-2 mt-2 max-h-64 overflow-y-auto">

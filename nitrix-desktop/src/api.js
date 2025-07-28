@@ -1,5 +1,4 @@
-export const API_BASE =
-  import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import apiClient from './apiClient';
 
 // Token management
 export function getToken() {
@@ -25,82 +24,36 @@ function getAuthHeaders() {
 }
 
 export async function pingServer() {
-  try {
-    const res = await fetch(`${API_BASE}/`);
-    if (!res.ok) throw new Error(`Status ${res.status}`);
-    const data = await res.json();
-    return data.status;
-  } catch (err) {
-    console.error('pingServer error:', err);
-    return 'Service Unavailable';
-  }
+  const data = await apiClient.get('/');
+  return data.status;
 }
 
 // Authentication functions
 export async function login(username, password) {
-  try {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-    
-    const res = await fetch(`${API_BASE}/auth/token`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!res.ok) {
-      throw new Error('Login failed');
-    }
-    
-    const data = await res.json();
-    setToken(data.access_token);
-    return { success: true, user: data };
-  } catch (err) {
-    console.error('Login error:', err);
-    return { success: false, error: err.message };
-  }
+  const formData = new FormData();
+  formData.append('username', username);
+  formData.append('password', password);
+
+  const data = await apiClient.post('/auth/token', formData, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+
+  setToken(data.access_token);
+  return { success: true, user: data };
 }
 
 export async function register(username, email, password, fullName = '') {
-  try {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        username, 
-        email, 
-        password, 
-        full_name: fullName 
-      })
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.detail || 'Registration failed');
-    }
-    
-    return { success: true, user: await res.json() };
-  } catch (err) {
-    console.error('Registration error:', err);
-    return { success: false, error: err.message };
-  }
+  const user = await apiClient.post('/auth/register', {
+    username,
+    email,
+    password,
+    full_name: fullName,
+  });
+  return { success: true, user };
 }
 
 export async function getCurrentUser() {
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) {
-      throw new Error('Failed to get user info');
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Get user error:', err);
-    return null;
-  }
+  return await apiClient.get('/auth/me');
 }
 
 export function logout() {
@@ -108,216 +61,57 @@ export function logout() {
 }
 
 export async function createProject(name) {
-  try {
-    const res = await fetch(`${API_BASE}/projects/create`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({ name })
-    });
-    
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Create project error:', err);
-    return { success: false, error: err.message };
-  }
+  return await apiClient.post('/projects/create', { name });
 }
 
 export async function fetchProjects() {
-  try {
-    const res = await fetch(`${API_BASE}/projects`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
-    const data = await res.json();
-    return data.success ? data.projects : [];
-  } catch (err) {
-    console.error('Fetch projects error:', err);
-    return [];
-  }
+  const data = await apiClient.get('/projects');
+  return data.success ? data.projects : [];
 }
 
 export async function saveSchema(projectId, schema) {
-  try {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/schema`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify(schema)
-    });
-    
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('saveSchema error:', err);
-    return { success: false, error: err.message };
-  }
+  return await apiClient.post(`/projects/${projectId}/schema`, schema);
 }
 
 export async function uploadDataset(projectId, file) {
-  try {
-    const form = new FormData();
-    form.append('file', file);
-    
-    const res = await fetch(`${API_BASE}/projects/${projectId}/data`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: form
-    });
-    
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Upload dataset error:', err);
-    return { success: false, error: err.message };
-  }
+  const form = new FormData();
+  form.append('file', file);
+  return await apiClient.post(`/projects/${projectId}/data`, form, {
+    headers: { 'Content-Type': undefined },
+  });
 }
 
 export async function predict(projectId, inputs) {
-  try {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/predict`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({ inputs })
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Prediction failed: ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Prediction error:', err);
-    throw err;
-  }
+  return await apiClient.post(`/projects/${projectId}/predict`, { inputs });
 }
 
 export async function fetchLogs(projectId) {
-  try {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/logs`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Logs fetch failed: ${res.status}`);
-    }
-    
-    return await res.text();
-  } catch (err) {
-    console.error('Fetch logs error:', err);
-    throw err;
-  }
+  return await apiClient.get(`/projects/${projectId}/logs`);
 }
 
 export async function startTraining(projectId, cpuPercent) {
-  try {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/train`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({ cpu_percent: cpuPercent }),
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Train failed: ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Start training error:', err);
-    throw err;
-  }
+  return await apiClient.post(`/projects/${projectId}/train`, {
+    cpu_percent: cpuPercent,
+  });
 }
 
 export async function fetchTrainingLog(projectId) {
-  try {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/training-log`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) {
-      return null;
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Fetch training log error:', err);
-    return null;
-  }
+  return await apiClient.get(`/projects/${projectId}/training-log`);
 }
 
 export async function fetchSystemInfo() {
-  try {
-    const res = await fetch(`${API_BASE}/system-info`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Status ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error("fetchSystemInfo error:", err);
-    return null;
-  }
+  return await apiClient.get('/system-info');
 }
 
 export async function downloadHuggingFaceModel(modelId, projectId) {
-  try {
-    const form = new FormData();
-    form.append('model_id', modelId);
-    form.append('project_id', projectId);
-    
-    const res = await fetch(`${API_BASE}/download-hf-model`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: form
-    });
-    
-    return res.ok ? await res.json() : { success: false, error: 'Network error' };
-  } catch (err) {
-    console.error('Download HF model error:', err);
-    return { success: false, error: err.message };
-  }
+  const form = new FormData();
+  form.append('model_id', modelId);
+  form.append('project_id', projectId);
+  return await apiClient.post('/download-hf-model', form, {
+    headers: { 'Content-Type': undefined },
+  });
 }
 
 export async function searchHuggingFaceModels(query) {
-  try {
-    const res = await fetch(`${API_BASE}/search-hf-models?q=${encodeURIComponent(query)}`, {
-      headers: getAuthHeaders()
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Search failed: ${res.status}`);
-    }
-    
-    return await res.json();
-  } catch (err) {
-    console.error('Search HF models error:', err);
-    return [];
-  }
+  return await apiClient.get(`/search-hf-models?q=${encodeURIComponent(query)}`);
 }
