@@ -144,10 +144,6 @@
                     document.title = `Nitrix v${version} - Train Smarter AI`;
                 });
 
-                // Listen for menu actions
-                window.electronAPI.onMenuAction((event, action, data) => {
-                    handleMenuAction(action, data);
-                });
             }
 
             // Show menu hint after 2 seconds
@@ -167,48 +163,6 @@
 
         function closeWindow() {
             window.close();
-        }
-
-        // Handle menu actions from Electron
-        function handleMenuAction(action, data) {
-            switch (action) {
-                case 'new-project':
-                    // Trigger new project in React app
-                    window.dispatchEvent(new CustomEvent('electron-menu', {
-                        detail: { action: 'new-project' }
-                    }));
-                    break;
-                
-                case 'open-project':
-                    window.dispatchEvent(new CustomEvent('electron-menu', {
-                        detail: { action: 'open-project', path: data }
-                    }));
-                    break;
-                
-                case 'export-model':
-                    window.dispatchEvent(new CustomEvent('electron-menu', {
-                        detail: { action: 'export-model' }
-                    }));
-                    break;
-                
-                case 'train-model':
-                    window.dispatchEvent(new CustomEvent('electron-menu', {
-                        detail: { action: 'train-model' }
-                    }));
-                    break;
-                
-                case 'test-model':
-                    window.dispatchEvent(new CustomEvent('electron-menu', {
-                        detail: { action: 'test-model' }
-                    }));
-                    break;
-                
-                case 'model-settings':
-                    window.dispatchEvent(new CustomEvent('electron-menu', {
-                        detail: { action: 'model-settings' }
-                    }));
-                    break;
-            }
         }
 
         // Enhanced file operations for desktop

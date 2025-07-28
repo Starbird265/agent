@@ -23,6 +23,16 @@ export default function App() {
 
   useEffect(() => {
     initializeApp();
+
+    const removeMenuListener = window.electronAPI?.onMenuAction((action, data) => {
+      handleMenuAction(action, data);
+    });
+
+    return () => {
+      if (removeMenuListener) {
+        removeMenuListener();
+      }
+    };
   }, []);
 
   const initializeApp = async () => {
@@ -112,6 +122,29 @@ export default function App() {
     setDataset([]);
     setSchema(null);
     addNotification(`Switched to project: ${selectedProject.name}`, 'info');
+  };
+
+  const handleMenuAction = (action, data) => {
+    switch (action) {
+      case 'new-project':
+        setCurrentTab('projects');
+        break;
+      case 'open-project':
+        // This needs to be handled by the component that opens projects
+        break;
+      case 'export-model':
+        // This needs to be handled by the component that exports models
+        break;
+      case 'train-model':
+        // This needs to be handled by the component that trains models
+        break;
+      case 'test-model':
+        // This needs to be handled by the component that tests models
+        break;
+      case 'model-settings':
+        // This needs to be handled by the component that manages model settings
+        break;
+    }
   };
 
   return (

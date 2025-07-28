@@ -14,10 +14,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
     
     // Menu actions
-    onMenuAction: (callback) => ipcRenderer.on('menu-action', callback),
-    
-    // Remove listeners
-    removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+    onMenuAction: (callback) => {
+        const listener = (event, ...args) => callback(...args);
+        ipcRenderer.on('menu-action', listener);
+        return () => {
+            ipcRenderer.removeListener('menu-action', listener);
+        };
+    },
 });
 
 // Security: Remove Node.js access from renderer
