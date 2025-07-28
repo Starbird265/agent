@@ -1,7 +1,15 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const { spawn } = require('child_process');
+
+function sanitizeUrl(url) {
+  const parsedUrl = new URL(url);
+  if (['https:', 'http:'].includes(parsedUrl.protocol)) {
+    return url;
+  }
+  return '';
+}
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -56,9 +64,7 @@ function createMainWindow() {
 
     // Show window when ready
     mainWindow.once('ready-to-show', () => {
-        if (splashWindow) {
-            splashWindow.close();
-        }
+        splashWindow.destroy();
         mainWindow.show();
         
         // Focus on macOS
@@ -74,19 +80,27 @@ function createMainWindow() {
 
     // Handle external links
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
+        const sanitized = sanitizeUrl(url);
+        if (sanitized) {
+            shell.openExternal(sanitized);
+        }
         return { action: 'deny' };
     });
 }
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': ["script-src 'self'"]
+            }
+        })
+    })
+
     createSplashWindow();
-    
-    // Create main window after splash
-    setTimeout(() => {
-        createMainWindow();
-    }, 2000);
+    createMainWindow();
 
     // Create application menu
     createMenu();
@@ -110,7 +124,10 @@ app.on('window-all-closed', () => {
 app.on('web-contents-created', (event, contents) => {
     contents.on('new-window', (event, navigationUrl) => {
         event.preventDefault();
-        shell.openExternal(navigationUrl);
+        const sanitized = sanitizeUrl(navigationUrl);
+        if (sanitized) {
+            shell.openExternal(sanitized);
+        }
     });
 });
 
@@ -231,13 +248,19 @@ function createMenu() {
                 {
                     label: 'Documentation',
                     click: () => {
-                        shell.openExternal('https://docs.nitrix.ai');
+                        const sanitized = sanitizeUrl('https://docs.nitrix.ai');
+                        if (sanitized) {
+                            shell.openExternal(sanitized);
+                        }
                     }
                 },
                 {
                     label: 'Report Issue',
                     click: () => {
-                        shell.openExternal('https://github.com/nitrix/issues');
+                        const sanitized = sanitizeUrl('https://github.com/nitrix/issues');
+                        if (sanitized) {
+                            shell.openExternal(sanitized);
+                        }
                     }
                 }
             ]
